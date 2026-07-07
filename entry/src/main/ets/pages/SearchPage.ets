@@ -151,26 +151,41 @@ struct SearchPage {
     })
   }
 
+  @Builder SearchIconBuilder() {
+    Image($r('app.media.icon_search'))
+      .width(18)
+      .height(18)
+      .objectFit(ImageFit.Contain)
+  }
+
   build() {
     Column() {
       // 顶部搜索区域
-      Row({ space: 8 }) {
+      Row({ space: 10 }) {
         // 返回按钮
-        Text('‹')
-          .fontSize(34)
-          .fontColor('#1C1C1E')
-          .width(32)
-          .height(46)
-          .textAlign(TextAlign.Center)
-          .onClick(() => {
-            router.back();
-          })
+        Row() {
+          Text('‹')
+            .fontSize(36)
+            .fontColor('#24262B')
+        }
+        .width(40)
+        .height(48)
+        .justifyContent(FlexAlign.Center)
+        .alignItems(VerticalAlign.Center)
+        .onClick(() => {
+          router.back();
+        })
 
         // 搜索输入框
         Row() {
-          Text('\uD83D\uDD0D')
-            .fontSize(16)
-            .margin({ left: 12 })
+          Row() {
+            this.SearchIconBuilder()
+          }
+          .width(20)
+          .height(20)
+          .margin({ left: 14 })
+          .justifyContent(FlexAlign.Center)
+          .alignItems(VerticalAlign.Center)
 
           TextInput({
             placeholder: '搜商品、品牌或型号',
@@ -178,12 +193,12 @@ struct SearchPage {
           })
             .fontSize(14)
             .fontColor('#1C1C1E')
-            .placeholderColor('#8E8E93')
+            .placeholderColor('#9A9DA4')
             .backgroundColor(Color.Transparent)
             .border({ width: 0 })
             .layoutWeight(1)
-            .height(44)
-            .padding({ left: 8, right: 4 })
+            .height(48)
+            .padding({ left: 9, right: 4 })
             .onChange((value: string) => {
               this.searchText = value;
               this.doSearch(value);
@@ -193,15 +208,15 @@ struct SearchPage {
             })
 
           if (this.searchText.length > 0) {
-            Text('\u2715')
-              .fontSize(12)
-              .fontColor('#8E8E93')
-              .width(24)
-              .height(24)
+            Text('×')
+              .fontSize(16)
+              .fontColor('#73767D')
+              .width(26)
+              .height(26)
               .textAlign(TextAlign.Center)
-              .borderRadius(12)
-              .backgroundColor('#E5E5EA')
-              .margin({ right: 8 })
+              .borderRadius(13)
+              .backgroundColor('#E9EBF0')
+              .margin({ right: 9 })
               .onClick(() => {
                 this.searchText = '';
                 this.searchResults = [];
@@ -209,9 +224,13 @@ struct SearchPage {
           }
         }
         .layoutWeight(1)
-        .height(44)
-        .borderRadius(14)
-        .backgroundColor('#F5F6F8')
+        .height(48)
+        .borderRadius(16)
+        .backgroundColor('#F7F8FA')
+        .border({
+          width: 1,
+          color: '#E8EAF0'
+        })
         .alignItems(VerticalAlign.Center)
 
         // 搜索按钮
@@ -220,16 +239,16 @@ struct SearchPage {
           .fontWeight(FontWeight.Medium)
           .fontColor(Color.White)
           .backgroundColor('#5267E8')
-          .width(60)
-          .height(40)
-          .borderRadius(12)
+          .width(64)
+          .height(44)
+          .borderRadius(14)
           .onClick(() => {
             this.commitSearch(this.searchText);
           })
       }
       .width('100%')
-      .height(64)
-      .padding({ left: 10, right: 12 })
+      .height(72)
+      .padding({ left: 8, right: 14 })
       .alignItems(VerticalAlign.Center)
       .backgroundColor(Color.White)
 
@@ -264,7 +283,7 @@ struct SearchPage {
           Column() {
             Row() {
               Text('搜索历史')
-                .fontSize(17)
+                .fontSize(18)
                 .fontWeight(FontWeight.Bold)
                 .fontColor('#1C1C1E')
                 .layoutWeight(1)
@@ -318,7 +337,11 @@ struct SearchPage {
                         bottom: 8
                       })
                       .backgroundColor(Color.White)
-                      .borderRadius(16)
+                      .border({
+                        width: 1,
+                        color: '#ECEEF2'
+                      })
+                      .borderRadius(18)
                       .margin({
                         right: 10,
                         bottom: 10
@@ -350,7 +373,7 @@ struct SearchPage {
           // 热门搜索
           Column() {
             Text('热门搜索')
-              .fontSize(17)
+              .fontSize(18)
               .fontWeight(FontWeight.Bold)
               .fontColor('#1C1C1E')
               .width('100%')
@@ -372,7 +395,11 @@ struct SearchPage {
                     bottom: 8
                   })
                   .backgroundColor(Color.White)
-                  .borderRadius(16)
+                  .border({
+                    width: 1,
+                    color: '#ECEEF2'
+                  })
+                  .borderRadius(18)
                   .margin({
                     right: 10,
                     bottom: 10

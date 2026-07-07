@@ -5,14 +5,12 @@ import { MockData } from '../data/MockData'
 import { PreferenceManager } from '../utils/PreferenceManager'
 import { NavParams } from '../utils/PreferenceManager'
 import { SearchBar } from '../components/SearchBar'
-import { CategoryIconGrid } from '../components/CategoryIconGrid'
 import { ProductCard } from '../components/ProductCard'
 import { RecommendationItem } from '../models/RecommendationModels'
 import { RecommendationEngine } from '../utils/RecommendationEngine'
 import { RecommendationSection } from '../components/RecommendationSection'
 import { BehaviorManager } from '../utils/BehaviorManager'
 
-let TAB_ICONS: string[] = ['🏠', '🔍', '❤️', '👤']
 let TAB_LABELS: string[] = ['首页', '发现', '收藏', '我的']
 
 @Component
@@ -48,6 +46,74 @@ struct HomeContent {
       clearTimeout(this.greetingTimer)
       this.greetingTimer = -1
     }
+  }
+
+  @Builder CategoryIconBuilder(index: number) {
+    if (index === 0) {
+      Image($r('app.media.category_phone'))
+        .width(27)
+        .height(27)
+        .objectFit(ImageFit.Contain)
+    } else if (index === 1) {
+      Image($r('app.media.category_laptop'))
+        .width(27)
+        .height(27)
+        .objectFit(ImageFit.Contain)
+    } else if (index === 2) {
+      Image($r('app.media.category_appliance'))
+        .width(27)
+        .height(27)
+        .objectFit(ImageFit.Contain)
+    } else if (index === 3) {
+      Image($r('app.media.category_beauty'))
+        .width(27)
+        .height(27)
+        .objectFit(ImageFit.Contain)
+    } else if (index === 4) {
+      Image($r('app.media.category_clothing'))
+        .width(27)
+        .height(27)
+        .objectFit(ImageFit.Contain)
+    } else {
+      Image($r('app.media.category_food'))
+        .width(27)
+        .height(27)
+        .objectFit(ImageFit.Contain)
+    }
+  }
+
+  @Builder CategoryGridBuilder() {
+    Flex({ wrap: FlexWrap.Wrap }) {
+      ForEach(MockData.getCategories(), (category: Category, index: number) => {
+        Column({ space: 8 }) {
+          Column() {
+            this.CategoryIconBuilder(index)
+          }
+          .width(54)
+          .height(54)
+          .borderRadius(16)
+          .backgroundColor('#EEF1FF')
+          .justifyContent(FlexAlign.Center)
+          .alignItems(HorizontalAlign.Center)
+
+          Text(category.name)
+            .fontSize(13)
+            .fontColor('#3C3C43')
+            .maxLines(1)
+        }
+        .width('33.33%')
+        .margin({ bottom: 16 })
+        .alignItems(HorizontalAlign.Center)
+        .onClick(() => {
+          NavParams.categoryId = category.id
+          NavParams.categoryName = category.name
+          router.pushUrl({
+            url: 'pages/CategoryFilterPage'
+          })
+        })
+      }, (category: Category) => category.id)
+    }
+    .width('100%')
   }
 
   build() {
@@ -90,17 +156,7 @@ struct HomeContent {
             .fontColor('#1C1C1E')
             .width('100%')
 
-          CategoryIconGrid({
-            categories: MockData.getCategories(),
-            columns: 3,
-            onCategoryClick: (category: Category): void => {
-              NavParams.categoryId = category.id
-              NavParams.categoryName = category.name
-              router.pushUrl({
-                url: 'pages/CategoryFilterPage'
-              })
-            }
-          })
+          this.CategoryGridBuilder()
         }
         .width('100%')
         .margin({ bottom: 24 })
@@ -525,18 +581,53 @@ export struct HomePage {
     this.homeRecommendations = engine.recommend(10)
   }
 
+  @Builder TabIconBuilder(index: number) {
+    if (index === 0) {
+      Image($r('app.media.tab_home'))
+        .width(23)
+        .height(23)
+        .objectFit(ImageFit.Contain)
+        .opacity(this.currentTabIndex === index ? 1 : 0.42)
+    } else if (index === 1) {
+      Image($r('app.media.tab_discover'))
+        .width(23)
+        .height(23)
+        .objectFit(ImageFit.Contain)
+        .opacity(this.currentTabIndex === index ? 1 : 0.42)
+    } else if (index === 2) {
+      Image($r('app.media.tab_favorite'))
+        .width(23)
+        .height(23)
+        .objectFit(ImageFit.Contain)
+        .opacity(this.currentTabIndex === index ? 1 : 0.42)
+    } else {
+      Image($r('app.media.tab_profile'))
+        .width(23)
+        .height(23)
+        .objectFit(ImageFit.Contain)
+        .opacity(this.currentTabIndex === index ? 1 : 0.42)
+    }
+  }
+
   @Builder TabBarBuilder(index: number) {
-    Column({ space: 2 }) {
-      Text(TAB_ICONS[index])
-        .fontSize(24)
+    Column({ space: 4 }) {
+      Column() {
+        this.TabIconBuilder(index)
+      }
+      .width(36)
+      .height(28)
+      .borderRadius(10)
+      .backgroundColor(this.currentTabIndex === index ? '#EEF1FF' : Color.Transparent)
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center)
 
       Text(TAB_LABELS[index])
         .fontSize(11)
-        .fontColor(this.currentTabIndex === index ? '#007AFF' : '#8E8E93')
+        .fontColor(this.currentTabIndex === index ? '#5267E8' : '#8E8E93')
         .fontWeight(this.currentTabIndex === index ? FontWeight.Medium : FontWeight.Normal)
     }
     .width('100%')
-    .padding({ top: 10, bottom: 10 })
+    .padding({ top: 8, bottom: 8 })
     .backgroundColor(Color.White)
     .onClick(() => {
       this.currentTabIndex = index
