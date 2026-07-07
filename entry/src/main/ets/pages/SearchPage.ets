@@ -19,6 +19,7 @@ struct SearchPage {
   @State searchResults: Product[] = [];
   @State searchHistory: string[] = [];
   @State hotKeywords: string[] = [];
+  @State showHistory: boolean = true;
   private http: HttpClient = DataProvider.getHttpClient()
 
   aboutToAppear(): void {
@@ -152,19 +153,37 @@ struct SearchPage {
 
   build() {
     Column() {
-      Row() {
+      // 顶部搜索区域
+      Row({ space: 8 }) {
+        // 返回按钮
+        Text('‹')
+          .fontSize(34)
+          .fontColor('#1C1C1E')
+          .width(32)
+          .height(46)
+          .textAlign(TextAlign.Center)
+          .onClick(() => {
+            router.back();
+          })
+
+        // 搜索输入框
         Row() {
           Text('\uD83D\uDD0D')
             .fontSize(16)
             .margin({ left: 12 })
 
-          TextInput({ placeholder: '搜索商品、品类...', text: this.searchText })
-            .fontSize(15)
+          TextInput({
+            placeholder: '搜商品、品牌或型号',
+            text: this.searchText
+          })
+            .fontSize(14)
+            .fontColor('#1C1C1E')
+            .placeholderColor('#8E8E93')
             .backgroundColor(Color.Transparent)
             .border({ width: 0 })
             .layoutWeight(1)
-            .height(40)
-            .padding({ left: 8, right: 8 })
+            .height(44)
+            .padding({ left: 8, right: 4 })
             .onChange((value: string) => {
               this.searchText = value;
               this.doSearch(value);
@@ -175,13 +194,13 @@ struct SearchPage {
 
           if (this.searchText.length > 0) {
             Text('\u2715')
-              .fontSize(14)
+              .fontSize(12)
               .fontColor('#8E8E93')
-              .width(28)
-              .height(28)
+              .width(24)
+              .height(24)
               .textAlign(TextAlign.Center)
-              .borderRadius(14)
-              .backgroundColor('#D1D1D6')
+              .borderRadius(12)
+              .backgroundColor('#E5E5EA')
               .margin({ right: 8 })
               .onClick(() => {
                 this.searchText = '';
@@ -189,26 +208,32 @@ struct SearchPage {
               })
           }
         }
-        .width('100%')
-        .height(40)
-        .borderRadius(20)
-        .backgroundColor('#F2F2F7')
-        .alignItems(VerticalAlign.Center)
         .layoutWeight(1)
+        .height(44)
+        .borderRadius(14)
+        .backgroundColor('#F5F6F8')
+        .alignItems(VerticalAlign.Center)
 
-        Button('取消')
-          .fontSize(15)
-          .fontColor('#007AFF')
-          .backgroundColor(Color.Transparent)
-          .margin({ left: 10 })
+        // 搜索按钮
+        Button('搜索')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Color.White)
+          .backgroundColor('#5267E8')
+          .width(60)
+          .height(40)
+          .borderRadius(12)
           .onClick(() => {
-            router.back();
+            this.commitSearch(this.searchText);
           })
       }
       .width('100%')
-      .padding({ left: 16, right: 16, top: 12, bottom: 8 })
-      .backgroundColor('#FFFFFF')
+      .height(64)
+      .padding({ left: 10, right: 12 })
+      .alignItems(VerticalAlign.Center)
+      .backgroundColor(Color.White)
 
+      // 搜索结果
       if (this.searchResults.length > 0) {
         Scroll() {
           Column() {
@@ -216,7 +241,11 @@ struct SearchPage {
               .fontSize(13)
               .fontColor('#8E8E93')
               .width('100%')
-              .padding({ left: 16, top: 12, bottom: 8 })
+              .padding({
+                left: 16,
+                top: 12,
+                bottom: 8
+              })
 
             ForEach(this.searchResults, (product: Product) => {
               this.buildProductItem(product)
@@ -227,87 +256,148 @@ struct SearchPage {
         }
         .width('100%')
         .layoutWeight(1)
-        .backgroundColor('#F2F2F7')
+        .backgroundColor('#F5F6F8')
         .scrollBar(BarState.Off)
       } else {
-        Scroll() {
+        Column() {
+          // 搜索历史
           Column() {
-            if (this.searchHistory.length > 0) {
-              Column() {
-                Row() {
-                  Text('搜索历史')
-                    .fontSize(16)
-                    .fontWeight(600)
-                    .fontColor('#1C1C1E')
-                    .layoutWeight(1)
+            Row() {
+              Text('搜索历史')
+                .fontSize(17)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#1C1C1E')
+                .layoutWeight(1)
 
-                  Text('清空')
-                    .fontSize(13)
-                    .fontColor('#FF3B30')
-                    .onClick(() => {
-                      this.clearHistory();
-                    })
-                }
-                .width('100%')
-                .padding({ left: 16, right: 16, top: 16, bottom: 12 })
+              Text(this.showHistory ? '隐藏' : '展开')
+                .fontSize(13)
+                .fontColor('#5267E8')
+                .padding({
+                  left: 8,
+                  right: 8,
+                  top: 6,
+                  bottom: 6
+                })
+                .onClick(() => {
+                  this.showHistory = !this.showHistory;
+                })
 
+              if (this.searchHistory.length > 0) {
+                Text('清空')
+                  .fontSize(13)
+                  .fontColor('#8E8E93')
+                  .padding({
+                    left: 8,
+                    top: 6,
+                    bottom: 6
+                  })
+                  .onClick(() => {
+                    this.clearHistory();
+                  })
+              }
+            }
+            .width('100%')
+            .padding({
+              left: 16,
+              right: 16,
+              top: 20,
+              bottom: this.showHistory ? 12 : 4
+            })
+
+            if (this.showHistory) {
+              if (this.searchHistory.length > 0) {
                 Flex({ wrap: FlexWrap.Wrap }) {
                   ForEach(this.searchHistory, (keyword: string) => {
                     Text(keyword)
                       .fontSize(13)
                       .fontColor('#3C3C3C')
-                      .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-                      .backgroundColor('#F2F2F7')
+                      .padding({
+                        left: 14,
+                        right: 14,
+                        top: 8,
+                        bottom: 8
+                      })
+                      .backgroundColor(Color.White)
                       .borderRadius(16)
-                      .margin({ right: 10, bottom: 10 })
+                      .margin({
+                        right: 10,
+                        bottom: 10
+                      })
                       .onClick(() => {
                         this.commitSearch(keyword);
                       })
                   })
                 }
-                .padding({ left: 16 })
-                .width('100%')
-              }
-              .width('100%')
-            }
-
-            Column() {
-              Text('热门搜索')
-                .fontSize(16)
-                .fontWeight(600)
-                .fontColor('#1C1C1E')
-                .width('100%')
-                .padding({ left: 16, top: 16, bottom: 12 })
-
-              Flex({ wrap: FlexWrap.Wrap }) {
-                ForEach(this.hotKeywords, (keyword: string) => {
-                  Text(keyword)
-                    .fontSize(13)
-                    .fontColor('#3C3C3C')
-                    .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-                    .backgroundColor('#F2F2F7')
-                    .borderRadius(16)
-                    .margin({ right: 10, bottom: 10 })
-                    .onClick(() => {
-                      this.commitSearch(keyword);
-                    })
+                .padding({
+                  left: 16,
+                  right: 6
                 })
+                .width('100%')
+              } else {
+                Text('暂无搜索记录')
+                  .fontSize(13)
+                  .fontColor('#AEAEB2')
+                  .width('100%')
+                  .padding({
+                    left: 16,
+                    bottom: 8
+                  })
               }
-              .padding({ left: 16 })
-              .width('100%')
             }
+          }
+          .width('100%')
+
+          // 热门搜索
+          Column() {
+            Text('热门搜索')
+              .fontSize(17)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#1C1C1E')
+              .width('100%')
+              .padding({
+                left: 16,
+                top: this.showHistory ? 16 : 8,
+                bottom: 12
+              })
+
+            Flex({ wrap: FlexWrap.Wrap }) {
+              ForEach(this.hotKeywords, (keyword: string) => {
+                Text(keyword)
+                  .fontSize(13)
+                  .fontColor('#3C3C3C')
+                  .padding({
+                    left: 14,
+                    right: 14,
+                    top: 8,
+                    bottom: 8
+                  })
+                  .backgroundColor(Color.White)
+                  .borderRadius(16)
+                  .margin({
+                    right: 10,
+                    bottom: 10
+                  })
+                  .onClick(() => {
+                    this.commitSearch(keyword);
+                  })
+              })
+            }
+            .padding({
+              left: 16,
+              right: 6
+            })
             .width('100%')
           }
           .width('100%')
         }
         .width('100%')
         .layoutWeight(1)
-        .backgroundColor('#F2F2F7')
-        .scrollBar(BarState.Off)
+        .alignItems(HorizontalAlign.Start)
+        .backgroundColor('#F5F6F8')
       }
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F2F2F7')
+    .backgroundColor('#F5F6F8')
   }
 }

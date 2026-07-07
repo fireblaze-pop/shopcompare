@@ -20,72 +20,112 @@ struct HomeContent {
   onSwitchTab: (index: number) => void = (index: number): void => {}
   @Prop recommendations: RecommendationItem[] = []
 
+  @State greetingHeight: number = 64
+  @State greetingOpacity: number = 1
+  @State greetingBottomMargin: number = 16
+
+  private greetingTimer: number = -1
+
+  aboutToAppear(): void {
+    this.greetingHeight = 64
+    this.greetingOpacity = 1
+    this.greetingBottomMargin = 16
+
+    this.greetingTimer = setTimeout(() => {
+      animateTo({
+        duration: 450,
+        curve: Curve.EaseInOut
+      }, () => {
+        this.greetingHeight = 0
+        this.greetingOpacity = 0
+        this.greetingBottomMargin = 0
+      })
+    }, 1800)
+  }
+
+  aboutToDisappear(): void {
+    if (this.greetingTimer !== -1) {
+      clearTimeout(this.greetingTimer)
+      this.greetingTimer = -1
+    }
+  }
+
   build() {
     Scroll() {
-      Column({ space: 16 }) {
-        Column({ space: 4 }) {
+      Column() {
+        // 欢迎区域
+        Column({ space: 6 }) {
           Text('你好，购物达人 👋')
-            .fontSize(28)
+            .fontSize(22)
             .fontWeight(FontWeight.Bold)
             .fontColor('#1C1C1E')
 
-          Text('今天找点什么？')
-            .fontSize(15)
+          Text('今天想比什么？')
+            .fontSize(14)
             .fontColor('#8E8E93')
         }
         .alignItems(HorizontalAlign.Start)
         .width('100%')
-        .margin({ top: 16 })
+        .height(this.greetingHeight)
+        .opacity(this.greetingOpacity)
+        .margin({
+          top: 20,
+          bottom: this.greetingBottomMargin
+        })
+        .clip(true)
 
+        // 搜索入口
         SearchBar({
           onSearchClick: (): void => {
             router.pushUrl({ url: 'pages/SearchPage' })
           }
         })
+          .margin({ bottom: 22 })
 
-        CategoryIconGrid({
-          categories: MockData.getCategories(),
-          onCategoryClick: (category: Category): void => {
-            NavParams.categoryId = category.id
-            NavParams.categoryName = category.name
-            router.pushUrl({
-              url: 'pages/CategoryFilterPage'
-            })
-          }
-        })
-
-        Row() {
-          Text('✨ 为你推荐')
+        // 商品分类
+        Column({ space: 12 }) {
+          Text('商品分类')
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor('#1C1C1E')
+            .width('100%')
 
-          Blank()
-
-          Text('查看更多')
-            .fontSize(14)
-            .fontColor('#007AFF')
-            .onClick(() => {
-              this.onSwitchTab(1)
-            })
+          CategoryIconGrid({
+            categories: MockData.getCategories(),
+            columns: 3,
+            onCategoryClick: (category: Category): void => {
+              NavParams.categoryId = category.id
+              NavParams.categoryName = category.name
+              router.pushUrl({
+                url: 'pages/CategoryFilterPage'
+              })
+            }
+          })
         }
         .width('100%')
-        .padding({ left: 4, right: 4 })
+        .margin({ bottom: 24 })
 
+        // 个性化推荐
         RecommendationSection({
-          title: '猜你喜欢',
+          title: '为你推荐',
           items: this.recommendations,
           onSeeMore: (): void => {
             this.onSwitchTab(1)
           }
         })
+          .margin({ bottom: 24 })
       }
       .width('100%')
-      .padding({ left: 16, right: 16, bottom: 24 })
+      .padding({
+        left: 16,
+        right: 16,
+        bottom: 24
+      })
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F2F2F7')
+    .backgroundColor('#F5F6F8')
+    .scrollBar(BarState.Off)
   }
 }
 
