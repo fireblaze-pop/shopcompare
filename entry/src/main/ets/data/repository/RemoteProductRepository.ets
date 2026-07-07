@@ -1,0 +1,260 @@
+import { Product, Category, ProductSpec, PricePoint, ReviewTag, SubCategory, PlatformListing } from '../../models/DataModels'
+import { ProductRepository, PriceStats } from './ProductRepository'
+import { HttpClient } from '../../utils/HttpClient'
+
+interface ProductJson {
+  id: string
+  name: string
+  model_code: string
+  brand: string
+  category: string
+  image_url: string
+  description: string
+  aggregate_score: number
+  aggregate_rating: number
+  total_review_count: number
+  lowest_price: number
+  highest_price: number
+  price_spread: number
+  historical_low: number
+  platform_count: number
+  publish_date: string
+}
+
+interface ProductDetailJson extends ProductJson {
+  specs: ProductSpecJson[]
+  platform_listings: PlatformListingJson[]
+  price_history: PricePointJson[]
+  review_tags: ReviewTagJson[]
+}
+
+interface ProductSpecJson {
+  key: string
+  value: string
+}
+
+interface PlatformListingJson {
+  platform: string
+  price: number
+  rating: number
+  review_count: number
+  in_stock: boolean
+  url: string
+}
+
+interface PricePointJson {
+  date: string
+  price: number
+}
+
+interface ReviewTagJson {
+  text: string
+  type: number
+  count: number
+}
+
+interface ProductListJson {
+  total: number
+  page: number
+  size: number
+  items: ProductJson[]
+}
+
+interface CategoryJson {
+  id: string
+  name: string
+  icon: string
+  sub_categories: SubCategoryJson[]
+}
+
+interface SubCategoryJson {
+  id: string
+  name: string
+}
+
+function jsonToProduct(json: ProductJson): Product {
+  let product: Product = {
+    id: json.id,
+    name: json.name,
+    modelCode: json.model_code,
+    brand: json.brand,
+    category: json.category,
+    imageUrl: json.image_url,
+    specs: [],
+    aggregateScore: json.aggregate_score,
+    aggregateRating: json.aggregate_rating,
+    totalReviewCount: json.total_review_count,
+    platformListings: [],
+    lowestPrice: json.lowest_price,
+    priceSpread: json.price_spread,
+    historicalLow: json.historical_low,
+    priceHistory: [],
+    reviewTags: [],
+    publishDate: json.publish_date,
+    description: json.description
+  }
+  return product
+}
+
+function jsonToProductDetail(json: ProductDetailJson): Product {
+  let product: Product = jsonToProduct(json)
+
+  let listings: PlatformListing[] = []
+  let i: number = 0
+  while (i < json.platform_listings.length) {
+    let pl: PlatformListingJson = json.platform_listings[i]
+    listings.push({
+      platform: pl.platform,
+      price: pl.price,
+      rating: pl.rating,
+      reviewCount: pl.review_count,
+      inStock: pl.in_stock,
+      url: pl.url
+    })
+    i = i + 1
+  }
+  product.platformListings = listings
+
+  let history: PricePoint[] = []
+  let h: number = 0
+  while (h < json.price_history.length) {
+    history.push({
+      date: json.price_history[h].date,
+      price: json.price_history[h].price
+    })
+    h = h + 1
+  }
+  product.priceHistory = history
+
+  let tags: ReviewTag[] = []
+  let t: number = 0
+  while (t < json.review_tags.length) {
+    tags.push({
+      text: json.review_tags[t].text,
+      type: json.review_tags[t].type,
+      count: json.review_tags[t].count
+    })
+    t = t + 1
+  }
+  product.reviewTags = tags
+
+  let specs: ProductSpec[] = []
+  let s: number = 0
+  while (s < json.specs.length) {
+    specs.push({
+      key: json.specs[s].key,
+      value: json.specs[s].value
+    })
+    s = s + 1
+  }
+  product.specs = specs
+
+  return product
+}
+
+function jsonToCategory(json: CategoryJson): Category {
+  let subCats: SubCategory[] = []
+  let i: number = 0
+  while (i < json.sub_categories.length) {
+    subCats.push({
+      id: json.sub_categories[i].id,
+      name: json.sub_categories[i].name
+    })
+    i = i + 1
+  }
+  return {
+    id: json.id,
+    name: json.name,
+    icon: json.icon,
+    subCategories: subCats
+  }
+}
+
+export class RemoteProductRepository implements ProductRepository {
+  private client: HttpClient
+  private productCache: Product[]
+  private detailCache: Record<string, Product>
+  private categoryCache: Category[]
+
+  constructor(client: HttpClient) {
+    this.client = client
+    this.productCache = []
+    this.detailCache = {}
+    this.categoryCache = []
+  }
+
+  async refreshAll(): Promise<void> {
+    await this.loadProducts()
+    await this.loadCategories()
+  }
+
+  async loadProducts(): Promise<void> {
+    let response = await this.client.get('/products?size=100')
+    if (response.statusCode === 200) {
+      let data: ProductListJson = JSON.parse(response.data) as ProductListJson
+      let products: Product[] = []
+      let i: number = 0
+      while (i < data.items.length) {
+        products.push(jsonToProduct(data.items[i]))
+        i = i + 1
+      }
+      this.productCache = products
+    }
+  }
+
+  async loadCategories(): Promise<void> {
+    let response = await this.client.get('/categories')
+    if (response.statusCode === 200) {
+      let data: CategoryJson[] = JSON.parse(response.data) as CategoryJson[]
+      let categories: Category[] = []
+      let i: number = 0
+      while (i < data.length) {
+        categories.push(jsonToCategory(data[i]))
+        i = i + 1
+      }
+      this.categoryCache = categories
+    }
+  }
+
+  async loadProductDetail(id: string): Promise<Product | undefined> {
+    let response = await this.client.get('/products/' + id)
+    if (response.statusCode === 200) {
+      let data: ProductDetailJson = JSON.parse(response.data) as ProductDetailJson
+      let product: Product = jsonToProductDetail(data)
+      this.detailCache[id] = product
+      return product
+    }
+    return undefined
+  }
+
+  getProducts(): Product[] {
+    return this.productCache
+  }
+
+  getProductById(id: string): Product | undefined {
+    let cached: Product | undefined = this.detailCache[id]
+    if (cached !== undefined) {
+      return cached
+    }
+    let i: number = 0
+    while (i < this.productCache.length) {
+      if (this.productCache[i].id === id) {
+        return this.productCache[i]
+      }
+      i = i + 1
+    }
+    return undefined
+  }
+
+  getCategories(): Category[] {
+    return this.categoryCache
+  }
+
+  getCategoryPriceStats(category: string): PriceStats {
+    return { min: 0, max: 0, avg: 0 }
+  }
+
+  getBrandReputation(brand: string): number {
+    return 70
+  }
+}
