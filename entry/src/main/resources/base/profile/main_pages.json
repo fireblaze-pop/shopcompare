@@ -1,0 +1,18 @@
+{
+  "src": [
+    "pages/SplashPage",
+    "pages/LoginPage",
+    "pages/RegisterPage",
+    "pages/QuestionnairePage",
+    "pages/HomePage",
+    "pages/CategoryFilterPage",
+    "pages/CompareResultPage",
+    "pages/CompareTablePage",
+    "pages/ProductDetailPage",
+    "pages/SearchPage",
+    "pages/BrowseHistoryPage",
+    "pages/AboutPage",
+    "pages/PrivacyPage",
+    "pages/Index"
+  ]
+}
