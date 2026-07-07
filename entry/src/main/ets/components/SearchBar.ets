@@ -1,40 +1,35 @@
 @Component
 export struct SearchBar {
-  @Prop placeholder: string = '\u641C\u7D22\u5546\u54C1\u3001\u54C1\u7C7B...'
+  @Prop placeholder: string = '搜商品、品牌或型号'
   @Prop inputValue: string = ''
-  onChange: (value: string) => void = (value: string) => {}
-  onInputFocus: () => void = () => {}
-  onInputBlur: () => void = () => {}
-  onSearchClick: () => void = () => {}
+
+  onChange: (value: string) => void = (value: string): void => {}
+  onInputFocus: () => void = (): void => {}
+  onInputBlur: () => void = (): void => {}
+  onSearchClick: () => void = (): void => {}
 
   build() {
     Row() {
-      // 左侧搜索入口
       Row({ space: 8 }) {
-        Text('⌕')
-          .fontSize(22)
-          .fontColor('#7C7C84')
+        Image($r('app.media.icon_search'))
+          .width(18)
+          .height(18)
+          .objectFit(ImageFit.Contain)
 
         Text(this.inputValue.length > 0 ? this.inputValue : this.placeholder)
           .fontSize(14)
           .fontColor(this.inputValue.length > 0 ? '#1C1C1E' : '#9A9AA1')
           .maxLines(1)
-          .textOverflow({
-            overflow: TextOverflow.Ellipsis
-          })
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       .layoutWeight(1)
       .height('100%')
-      .padding({
-        left: 14,
-        right: 10
-      })
+      .padding({ left: 14, right: 10 })
       .alignItems(VerticalAlign.Center)
       .onClick(() => {
         this.onSearchClick()
       })
 
-      // 右侧搜索按钮
       Button('搜索')
         .fontSize(15)
         .fontWeight(FontWeight.Medium)
@@ -43,9 +38,7 @@ export struct SearchBar {
         .width(70)
         .height(40)
         .borderRadius(12)
-        .margin({
-          right: 4
-        })
+        .margin({ right: 4 })
         .onClick(() => {
           this.onSearchClick()
         })

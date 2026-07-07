@@ -1,8 +1,8 @@
-import { Product } from '../models/DataModels'
-import { StarRating } from './StarRating'
+import { Product } from '../../models/DataModels'
+import { StarRating } from '../StarRating'
 
 function emptyProduct(): Product {
-  let product: Product = {
+  return {
     id: '',
     name: '',
     modelCode: '',
@@ -22,40 +22,56 @@ function emptyProduct(): Product {
     publishDate: '',
     description: ''
   }
-
-  return product
 }
 
 @Component
-export struct ProductCard {
+export struct DiscoverProductCard {
   @Prop product: Product = emptyProduct()
-  @Prop showPlatforms: boolean = true
-  @Prop cardWidth: number = 0
 
-  onCardClick: () => void = (): void => {}
+  onProductAction: (product: Product) => void =
+    (product: Product): void => {}
 
   build() {
-    Column() {
-      Row() {
+    Row() {
+      Column() {
         if (this.product.imageUrl.length > 0) {
           Image(this.product.imageUrl)
-            .width('100%')
-            .height(152)
+            .width(94)
+            .height(94)
             .objectFit(ImageFit.Contain)
         } else {
           Image($r('app.media.icon_product_placeholder'))
-            .width(44)
-            .height(44)
+            .width(38)
+            .height(38)
             .objectFit(ImageFit.Contain)
         }
       }
-      .width('100%')
-      .height(152)
-      .justifyContent(FlexAlign.Center)
-      .alignItems(VerticalAlign.Center)
+      .width(104)
+      .height(112)
+      .borderRadius(14)
       .backgroundColor('#F7F8FA')
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center)
 
       Column() {
+        Row({ space: 6 }) {
+          Text(this.product.brand)
+            .fontSize(11)
+            .fontColor('#5267E8')
+            .padding({
+              left: 7,
+              right: 7,
+              top: 2,
+              bottom: 2
+            })
+            .backgroundColor('#EEF1FF')
+            .borderRadius(5)
+
+          Text(this.product.category)
+            .fontSize(11)
+            .fontColor('#8E8E93')
+        }
+
         Text(this.product.name)
           .fontSize(16)
           .fontWeight(FontWeight.Medium)
@@ -65,31 +81,15 @@ export struct ProductCard {
             overflow: TextOverflow.Ellipsis
           })
           .width('100%')
+          .margin({ top: 7 })
 
-        Row() {
-          Text(this.product.brand)
-            .fontSize(11)
-            .fontColor('#5267E8')
-            .padding({
-              left: 8,
-              right: 8,
-              top: 2,
-              bottom: 2
-            })
-            .backgroundColor('#EEF1FF')
-            .borderRadius(5)
-        }
-        .margin({ top: 8 })
-
-        Row() {
-          StarRating({
-            rating: this.product.aggregateRating,
-            starIconSize: 12,
-            showScore: true,
-            reviewCount: this.product.totalReviewCount
-          })
-        }
-        .margin({ top: 6 })
+        StarRating({
+          rating: this.product.aggregateRating,
+          starIconSize: 11,
+          showScore: true,
+          reviewCount: this.product.totalReviewCount
+        })
+          .margin({ top: 5 })
 
         Row() {
           Text('¥' + this.product.lowestPrice.toFixed(2))
@@ -110,24 +110,24 @@ export struct ProductCard {
             .borderRadius(5)
             .margin({ left: 7 })
         }
-        .margin({ top: 8 })
         .alignItems(VerticalAlign.Center)
+        .margin({ top: 7 })
 
-        if (this.showPlatforms) {
-          Text(
-            this.product.platformListings.length.toString() +
-            '个平台 · 价差 ¥' +
-            this.product.priceSpread.toFixed(2)
-          )
-            .fontSize(12)
-            .fontColor('#8E8E93')
-            .margin({ top: 6 })
-        }
+        Text(
+          this.product.platformListings.length.toString() +
+          '个平台 · 价差 ¥' +
+          this.product.priceSpread.toFixed(2)
+        )
+          .fontSize(12)
+          .fontColor('#8E8E93')
+          .margin({ top: 4 })
       }
-      .width('100%')
-      .padding(12)
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+      .margin({ left: 14 })
     }
-    .width(this.cardWidth > 0 ? this.cardWidth : '100%')
+    .width('100%')
+    .padding(14)
     .backgroundColor(Color.White)
     .borderRadius(16)
     .border({
@@ -135,7 +135,7 @@ export struct ProductCard {
       color: '#ECEEF2'
     })
     .onClick(() => {
-      this.onCardClick()
+      this.onProductAction(this.product)
     })
   }
 }
