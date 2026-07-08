@@ -13,9 +13,16 @@ from app.database import Base, get_db
 from app.main import app
 from app.models.models import PlatformListing, PriceHistory, Product
 
-TEST_DATABASE_URL = 'sqlite:///./test_shopcompare.db'
+TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL",
+    "sqlite:///./test_shopcompare.db",
+)
 
-engine = create_engine(TEST_DATABASE_URL, connect_args={'check_same_thread': False})
+_engine_kwargs = {}
+if TEST_DATABASE_URL.startswith("sqlite"):
+    _engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+engine = create_engine(TEST_DATABASE_URL, **_engine_kwargs)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
