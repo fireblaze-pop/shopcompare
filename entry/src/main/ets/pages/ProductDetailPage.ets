@@ -38,16 +38,10 @@ struct ProductDetailPage {
   loadProductData(productId: string): void {
     this.isLoading = true;
     setTimeout(() => {
-      let allProducts: Product[] = DataProvider.getProductRepository().getProducts();
-      let i: number = 0;
-      while (i < allProducts.length) {
-        if (allProducts[i].id === productId) {
-          this.product = allProducts[i];
-          break;
-        }
-        i = i + 1;
-      }
-      if (this.product !== undefined) {
+      let repo = DataProvider.getProductRepository();
+      let product: Product | undefined = repo.getProductById(productId);
+      if (product !== undefined) {
+        this.product = product;
         this.sortPlatformListings(true);
         this.isFavorited = PreferenceManager.isFavorite(productId);
         this.computeReviewTags();
@@ -142,6 +136,9 @@ struct ProductDetailPage {
   getHighestPrice(): number {
     if (this.product === undefined) {
       return 0;
+    }
+    if (this.product!.platformListings.length === 0) {
+      return this.product!.lowestPrice;
     }
     let highest: number = this.product!.platformListings[0].price;
     let i: number = 1;
