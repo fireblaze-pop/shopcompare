@@ -1,6 +1,6 @@
 import { router } from '@kit.ArkUI'
 import { Product } from '../models/DataModels'
-import { MockData } from '../data/MockData'
+import { DataProvider } from '../data/DataProvider'
 import { NavParams } from '../utils/PreferenceManager'
 import { FilterResultCard } from '../components/filter/FilterResultCard'
 
@@ -48,7 +48,7 @@ struct CompareResultPage {
   loadData(): void {
     this.isLoading = true
 
-    let allProducts: Product[] = MockData.getProducts()
+    let allProducts: Product[] = DataProvider.getProductRepository().getProducts()
     let filtered: Product[] = []
     let i: number = 0
 

@@ -2,6 +2,8 @@ from pydantic import BaseModel
 
 
 class ProductResponse(BaseModel):
+    model_config = {'protected_namespaces': ()}
+
     id: str
     name: str
     brand: str

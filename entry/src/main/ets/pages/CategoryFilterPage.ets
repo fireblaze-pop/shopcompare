@@ -331,7 +331,7 @@ struct CategoryFilterPage {
   }
 
   getMatchedProductCount(): number {
-    let products: Product[] = MockData.getProducts()
+    let products: Product[] = DataProvider.getProductRepository().getProducts()
     let count: number = 0
     let i: number = 0
 

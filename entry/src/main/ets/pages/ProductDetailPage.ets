@@ -1,7 +1,6 @@
 import { router } from '@kit.ArkUI';
 import { promptAction } from '@kit.ArkUI';
 import { Product, PlatformListing, PricePoint, ReviewTag } from '../models/DataModels';
-import { MockData } from '../data/MockData';
 import { PreferenceManager } from '../utils/PreferenceManager';
 import { NavParams } from '../utils/PreferenceManager';
 import { RadarDimension, RecommendationItem, ProductMeta } from '../models/RecommendationModels';
@@ -39,7 +38,7 @@ struct ProductDetailPage {
   loadProductData(productId: string): void {
     this.isLoading = true;
     setTimeout(() => {
-      let allProducts: Product[] = MockData.getProducts();
+      let allProducts: Product[] = DataProvider.getProductRepository().getProducts();
       let i: number = 0;
       while (i < allProducts.length) {
         if (allProducts[i].id === productId) {

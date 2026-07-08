@@ -57,7 +57,7 @@ struct SearchPage {
   }
 
   searchLocally(keyword: string): void {
-    let allProducts: Product[] = MockData.getProducts()
+    let allProducts: Product[] = DataProvider.getProductRepository().getProducts()
     let results: Product[] = []
     let i: number = 0
 

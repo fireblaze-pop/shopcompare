@@ -1,5 +1,5 @@
 import { router } from '@kit.ArkUI';
-import { MockData } from '../data/MockData';
+import { DataProvider } from '../data/DataProvider';
 import { PreferenceManager } from '../utils/PreferenceManager';
 import { UserProfile, Category } from '../models/DataModels';
 import { DataProvider } from '../data/DataProvider';
@@ -69,7 +69,7 @@ struct QuestionnairePage {
   @State selectedDimensions: string[] = [];
   @State selectedBudget: string = '';
   @State selectedPlatforms: string[] = [];
-  private categories: Category[] = MockData.getCategories();
+  private categories: Category[] = DataProvider.getProductRepository().getCategories();
   private dimensions: string[] = DIMENSION_LIST;
   private budgetOptions: BudgetCard[] = BUDGET_LIST;
   private platformItems: PlatformItem[] = PLATFORM_LIST;
