@@ -86,7 +86,7 @@ function safeStr(val: string): string {
   return val
 }
 
-export function jsonToProduct(json: ProductJson): Product {
+function jsonToProduct(json: ProductJson): Product {
   let product: Product = {
     id: safeStr(json.id),
     name: safeStr(json.name),

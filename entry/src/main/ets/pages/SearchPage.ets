@@ -5,7 +5,6 @@ import { NavParams, PreferenceManager } from '../utils/PreferenceManager'
 import { BehaviorManager } from '../utils/BehaviorManager'
 import { DataProvider } from '../data/DataProvider'
 import { HttpClient } from '../utils/HttpClient'
-import { jsonToProduct } from '../data/repository/RemoteProductRepository'
 import { SearchHeader } from '../components/search/SearchHeader'
 import { SearchKeywordPanel } from '../components/search/SearchKeywordPanel'
 import { SearchResultList } from '../components/search/SearchResultList'
@@ -58,7 +57,28 @@ struct SearchPage {
         let products: Product[] = []
         let i: number = 0
         while (i < data.items.length) {
-          products.push(jsonToProduct(data.items[i]))
+          let item: SearchApiItem = data.items[i]
+          let product: Product = {
+            id: item.id,
+            name: item.name,
+            modelCode: '',
+            brand: item.brand,
+            category: item.category,
+            imageUrl: item.image_url,
+            specs: [],
+            aggregateScore: 0,
+            aggregateRating: 0,
+            totalReviewCount: 0,
+            platformListings: [],
+            lowestPrice: item.lowest_price,
+            priceSpread: 0,
+            historicalLow: 0,
+            priceHistory: [],
+            reviewTags: [],
+            publishDate: '',
+            description: ''
+          }
+          products.push(product)
           i = i + 1
         }
         this.searchResults = products
