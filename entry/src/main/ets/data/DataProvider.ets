@@ -42,4 +42,15 @@ export class DataProvider {
     DataProvider.recDataSource = recDataSource
     DataProvider.behaviorRepo = behaviorRepo
   }
+
+  static async init(): Promise<void> {
+    try {
+      let response = await sharedHttpClient.get('/health')
+      if (response.statusCode === 200) {
+        DataProvider.productRepo = DataProvider.remoteRepo
+        await DataProvider.remoteRepo.refreshAll()
+      }
+    } catch (e) {
+    }
+  }
 }

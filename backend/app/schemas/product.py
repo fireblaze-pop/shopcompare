@@ -6,6 +6,7 @@ class ProductResponse(BaseModel):
     name: str
     brand: str
     category: str
+    model_code: str = ''
     image_url: str
     description: str
     lowest_price: float

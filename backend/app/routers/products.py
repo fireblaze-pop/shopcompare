@@ -14,6 +14,7 @@ def product_to_response(p: Product) -> ProductResponse:
         name=p.name,
         brand=p.brand,
         category=p.category,
+        model_code=p.model_code or '',
         image_url=p.image_url,
         description=p.description,
         lowest_price=p.lowest_price,

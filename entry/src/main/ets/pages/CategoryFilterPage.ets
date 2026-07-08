@@ -10,16 +10,23 @@ import { DataProvider } from '../data/DataProvider'
 import { HttpClient } from '../utils/HttpClient'
 import { FilterGroupCard } from '../components/filter/FilterGroupCard'
 
-interface FiltersResponse {
-  category: string
-  brands: string[]
-  price_range: PriceRange
-  product_count: number
+interface BrandItem {
+  name: string
+  count: number
 }
 
-interface PriceRange {
+interface PriceBin {
+  label: string
   min: number
   max: number
+  count: number
+}
+
+interface FiltersResponse {
+  category: string
+  brands: BrandItem[]
+  price_bins: PriceBin[]
+  product_count: number
 }
 
 @Entry
@@ -48,15 +55,14 @@ struct CategoryFilterPage {
 
     try {
       let resp = await this.http.get(
-        '/filters?category=' + this.categoryName
+        '/filters?category=' + encodeURIComponent(this.categoryName)
       )
 
       if (
         resp.statusCode === 200 &&
         this.selectedIds.length === 0
       ) {
-        let data: FiltersResponse =
-          JSON.parse(resp.data) as FiltersResponse
+        let data: FiltersResponse = JSON.parse(resp.data)
 
         this.filterGroups =
           this.buildFilterGroups(data, localGroups)
@@ -80,7 +86,7 @@ struct CategoryFilterPage {
       while (i < data.brands.length) {
         brandOptions.push({
           id: 'brand_remote_' + i.toString(),
-          label: data.brands[i],
+          label: data.brands[i].name,
           selected: false
         })
         i = i + 1
@@ -123,11 +129,9 @@ struct CategoryFilterPage {
   buildRemotePriceGroup(
     data: FiltersResponse
   ): FilterGroup {
-    let min: number = data.price_range.min
-    let max: number = data.price_range.max
     let options: FilterOption[] = []
 
-    if (max <= min) {
+    if (data.price_bins.length === 0) {
       return {
         name: '价格区间',
         type: 'price',
@@ -135,43 +139,15 @@ struct CategoryFilterPage {
       }
     }
 
-    let step: number = Math.max(
-      1,
-      Math.floor((max - min) / 4)
-    )
-
-    let current: number = min
-    let index: number = 0
-
-    while (current < max) {
-      let next: number = current + step
-
-      if (next >= max) {
-        next = max
-      }
-
+    let i: number = 0
+    while (i < data.price_bins.length) {
       options.push({
-        id: 'price_remote_' + index.toString(),
-        label:
-          current.toString() +
-          '-' +
-          next.toString(),
+        id: 'price_remote_' + i.toString(),
+        label: data.price_bins[i].label,
         selected: false
       })
-
-      current = next
-      index = index + 1
-
-      if (current >= max) {
-        break
-      }
+      i = i + 1
     }
-
-    options.push({
-      id: 'price_remote_above',
-      label: max.toString() + '以上',
-      selected: false
-    })
 
     return {
       name: '价格区间',

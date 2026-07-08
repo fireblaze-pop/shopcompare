@@ -77,10 +77,8 @@ DEMO_HISTORY = [
 
 def seed() -> None:
     Base.metadata.create_all(bind=engine)
-    if os.getenv('SHOPCOMPARE_ENABLE_DEMO_SEED', '').lower() in ('1', 'true', 'yes'):
-        seed_demo_products()
-    else:
-        print('Runtime product seed disabled. Use SHOPCOMPARE_ENABLE_DEMO_SEED=1 or app.init_db demo for demo data.')
+    seed_demo_products()
+    print('Seed data loaded.')
 
 
 def seed_demo_products() -> None:

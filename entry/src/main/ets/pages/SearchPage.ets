@@ -40,7 +40,7 @@ struct SearchPage {
 
     try {
       let resp = await this.http.get(
-        '/search?q=' + keyword
+        '/search?q=' + encodeURIComponent(keyword)
       )
 
       if (resp.statusCode === 200) {

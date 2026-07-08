@@ -282,7 +282,7 @@ struct RegisterPage {
 
   canRegister(): boolean {
     return this.phone.length === 11 &&
-      this.password.length >= 6 &&
+      this.password.length >= 8 &&
       this.password === this.confirmPassword
   }
 
