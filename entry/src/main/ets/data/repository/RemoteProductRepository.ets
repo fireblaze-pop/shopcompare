@@ -73,13 +73,25 @@ interface SubCategoryJson {
 }
 
 function jsonToProduct(json: ProductJson): Product {
+  let imgUrl: string = json.image_url
+  if (imgUrl === undefined) {
+    imgUrl = ''
+  }
+  let desc: string = json.description
+  if (desc === undefined) {
+    desc = ''
+  }
+  let pubDate: string = json.publish_date
+  if (pubDate === undefined) {
+    pubDate = ''
+  }
   let product: Product = {
     id: json.id,
     name: json.name,
     modelCode: json.model_code,
     brand: json.brand,
     category: json.category,
-    imageUrl: json.image_url,
+    imageUrl: imgUrl,
     specs: [],
     aggregateScore: json.aggregate_score,
     aggregateRating: json.aggregate_rating,
@@ -90,8 +102,8 @@ function jsonToProduct(json: ProductJson): Product {
     historicalLow: json.historical_low,
     priceHistory: [],
     reviewTags: [],
-    publishDate: json.publish_date,
-    description: json.description
+    publishDate: pubDate,
+    description: desc
   }
   return product
 }

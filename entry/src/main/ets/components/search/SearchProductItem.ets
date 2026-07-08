@@ -38,11 +38,10 @@ export struct SearchProductItem {
             .width(64)
             .height(64)
             .objectFit(ImageFit.Cover)
-        } else {
-          Image($r('app.media.icon_product_placeholder'))
-            .width(30)
-            .height(30)
-            .objectFit(ImageFit.Contain)
+        }
+        if (this.product.imageUrl.length === 0) {
+          Text('📦')
+            .fontSize(28)
         }
       }
       .width(64)
