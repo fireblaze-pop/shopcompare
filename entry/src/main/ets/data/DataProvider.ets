@@ -45,7 +45,7 @@ export class DataProvider {
 
   static async init(): Promise<void> {
     try {
-      let response = await sharedHttpClient.get('/health')
+      let response = await sharedHttpClient.get('/products?size=1')
       if (response.statusCode === 200) {
         DataProvider.productRepo = DataProvider.remoteRepo
         await DataProvider.remoteRepo.refreshAll()
