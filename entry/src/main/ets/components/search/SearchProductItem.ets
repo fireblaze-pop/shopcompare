@@ -33,14 +33,13 @@ export struct SearchProductItem {
   build() {
     Row() {
       Column() {
-        if (this.product.imageUrl.length > 0) {
+        if (this.product.imageUrl !== undefined && this.product.imageUrl.length > 0) {
           Image(this.product.imageUrl)
             .width(64)
             .height(64)
             .objectFit(ImageFit.Cover)
-        }
-        if (this.product.imageUrl.length === 0) {
-          Text('📦')
+        } else {
+          Text('\uD83D\uDCE6')
             .fontSize(28)
         }
       }
