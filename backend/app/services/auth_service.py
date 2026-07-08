@@ -18,13 +18,21 @@ SMS_CODES: dict[str, tuple[str, datetime]] = {}
 
 
 def hash_password(password: str) -> str:
+    import hashlib
     import bcrypt
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    data = password.encode('utf-8')
+    if len(data) > 72:
+        data = hashlib.sha256(data).hexdigest().encode('utf-8')
+    return bcrypt.hashpw(data, bcrypt.gensalt()).decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    import hashlib
     import bcrypt
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    data = plain_password.encode('utf-8')
+    if len(data) > 72:
+        data = hashlib.sha256(data).hexdigest().encode('utf-8')
+    return bcrypt.checkpw(data, hashed_password.encode('utf-8'))
 
 
 def create_access_token(user_id: int) -> str:

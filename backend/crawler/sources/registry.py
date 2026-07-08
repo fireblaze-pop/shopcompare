@@ -1,8 +1,5 @@
-from crawler.sources.jd_search import JdCrawler
-from crawler.sources.suning_search import SuningCrawler
-from crawler.base.base_crawler import BaseCrawler
+from crawler.sources.manmanbuy_search import ManmanbuyCrawler
 
-SOURCES: dict[str, type[BaseCrawler]] = {
-  'jd': JdCrawler,
-  'suning': SuningCrawler,
+SOURCES: dict[str, type] = {
+    'manmanbuy': ManmanbuyCrawler,
 }

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ShopCompare - Crawler Dashboard</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; padding: 24px; }
+h1 { font-size: 24px; margin-bottom: 20px; color: #f0f6fc; }
+h2 { font-size: 16px; margin: 24px 0 12px; color: #f0f6fc; }
+.card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+.status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+.status-dot.green { background: #3fb950; }
+.status-dot.red { background: #f85149; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.stat-label { font-size: 12px; color: #8b949e; }
+.stat-value { font-size: 20px; font-weight: 600; color: #f0f6fc; margin-top: 4px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #21262d; }
+th { color: #8b949e; font-weight: 500; }
+tr:hover td { background: #1c2128; }
+.btn { background: #238636; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.btn:hover { background: #2ea043; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+#message { margin-left: 12px; font-size: 13px; }
+.error-row td { color: #f85149; }
+.loading { animation: pulse 1.5s infinite; color: #8b949e; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+</style>
+</head>
+<body>
+
+<h1>ShopCompare - Crawler Dashboard</h1>
+
+<div class="card" id="status-card">
+  <div class="grid">
+    <div>
+      <div class="stat-label">Status</div>
+      <div class="stat-value" id="status-running">Loading...</div>
+    </div>
+    <div>
+      <div class="stat-label">Last Run</div>
+      <div class="stat-value" id="status-lastrun">-</div>
+    </div>
+    <div>
+      <div class="stat-label">Total Products</div>
+      <div class="stat-value" id="status-total">-</div>
+    </div>
+    <div>
+      <div class="stat-label">Interval</div>
+      <div class="stat-value" id="status-interval">-</div>
+    </div>
+  </div>
+  <div style="margin-top:16px">
+    <button class="btn" id="btn-trigger" onclick="triggerCrawl()">Trigger Crawl</button>
+    <span id="message"></span>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>By Platform</h2>
+    <table><thead><tr><th>Platform</th><th>Count</th></tr></thead><tbody id="stats-platforms"></tbody></table>
+  </div>
+  <div class="card">
+    <h2>By Category</h2>
+    <table><thead><tr><th>Category</th><th>Count</th></tr></thead><tbody id="stats-categories"></tbody></table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Latest Products</h2>
+  <table><thead><tr><th>Name</th><th>Platform</th><th>Price</th><th>Category</th><th>Created</th></tr></thead><tbody id="latest-products"></tbody></table>
+</div>
+
+<div class="card">
+  <h2>Crawl Logs</h2>
+  <table><thead><tr><th>Time</th><th>Keyword</th><th>Count</th><th>Error</th></tr></thead><tbody id="crawl-logs"></tbody></table>
+</div>
+
+<script>
+async function fetchJSON(url) {
+  try { let r = await fetch(url); return await r.json(); }
+  catch (e) { return null; }
+}
+
+function renderPlatforms(data) {
+  let tbody = document.getElementById('stats-platforms');
+  if (!data || !data.by_platform) { tbody.innerHTML = '<tr><td colspan="2" class="loading">Loading...</td></tr>'; return; }
+  tbody.innerHTML = data.by_platform.map(p => `<tr><td>${p.platform}</td><td>${p.count}</td></tr>`).join('');
+}
+
+function renderCategories(data) {
+  let tbody = document.getElementById('stats-categories');
+  if (!data || !data.by_category) { tbody.innerHTML = '<tr><td colspan="2" class="loading">Loading...</td></tr>'; return; }
+  tbody.innerHTML = data.by_category.map(c => `<tr><td>${c.category}</td><td>${c.count}</td></tr>`).join('');
+}
+
+function renderLatest(data) {
+  let tbody = document.getElementById('latest-products');
+  if (!data || !data.products) { tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>'; return; }
+  tbody.innerHTML = data.products.map(p =>
+    `<tr><td>${(p.name||'').substring(0,40)}</td><td>${p.platform}</td><td>${p.price.toFixed(0)}</td><td>${p.category}</td><td>${p.created_at}</td></tr>`
+  ).join('');
+}
+
+function renderLogs(data) {
+  let tbody = document.getElementById('crawl-logs');
+  if (!data || !data.logs) { tbody.innerHTML = '<tr><td colspan="4" class="loading">Loading...</td></tr>'; return; }
+  tbody.innerHTML = data.logs.map(l =>
+    `<tr class="${l.error ? 'error-row' : ''}"><td>${l.time}</td><td>${l.keyword}</td><td>${l.count}</td><td>${l.error||'-'}</td></tr>`
+  ).join('');
+}
+
+function renderStatus(data) {
+  if (!data) { document.getElementById('status-running').innerHTML = '<span class="status-dot red"></span> Disconnected'; return; }
+  let dot = data.running ? '<span class="status-dot green"></span> Running' : '<span class="status-dot red"></span> Stopped';
+  document.getElementById('status-running').innerHTML = dot;
+  document.getElementById('status-lastrun').textContent = data.last_run || 'Never';
+  document.getElementById('status-total').textContent = data.total_products;
+  document.getElementById('status-interval').textContent = data.interval_minutes + ' min';
+}
+
+async function refresh() {
+  let s = await fetchJSON('/api/v1/admin/status');
+  renderStatus(s);
+  let st = await fetchJSON('/api/v1/admin/stats');
+  renderPlatforms(st);
+  renderCategories(st);
+  let lp = await fetchJSON('/api/v1/admin/products/latest');
+  renderLatest(lp);
+  let lg = await fetchJSON('/api/v1/admin/logs');
+  renderLogs(lg);
+}
+
+async function triggerCrawl() {
+  let btn = document.getElementById('btn-trigger');
+  let msg = document.getElementById('message');
+  btn.disabled = true;
+  msg.textContent = 'Triggering...';
+  let r = await fetchJSON('/api/v1/admin/crawler/run');
+  msg.textContent = r ? (r.message || 'Done') : 'Failed';
+  btn.disabled = false;
+  setTimeout(() => { msg.textContent = ''; }, 5000);
+}
+
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>

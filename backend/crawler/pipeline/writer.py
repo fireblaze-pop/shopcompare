@@ -131,5 +131,100 @@ def save_raw_product(db: Session, raw: dict) -> Optional[str]:
   if len(history_prices) > 0:
     product.historical_low = min(history_prices)
 
+  _compute_product_score(db, product)
+
   db.commit()
   return product.id
+
+
+def _compute_product_score(db: Session, product: Product) -> None:
+    """六维加权评分"""
+    import math
+    import hashlib
+
+    KNOWN_BRANDS: list[str] = [
+        'Apple', '华为', 'HUAWEI', '小米', 'Redmi', 'OPPO', 'vivo', '三星', 'Samsung',
+        '荣耀', 'HONOR', '一加', 'OnePlus', 'realme', 'iQOO', '努比亚', '联想', 'Lenovo',
+        '戴尔', 'Dell', '华硕', 'ASUS', '惠普', 'HP', '美的', '格力', '海尔', '戴森', 'Dyson',
+        '飞利浦', 'Philips', '兰蔻', '雅诗兰黛', 'SK-II', '欧莱雅', 'Nike', 'Adidas',
+        '茅台', '李宁', '安踏', '苏泊尔', '九阳', '科沃斯', '石头', '罗技', 'Logitech',
+        '索尼', 'SONY', '松下', 'Panasonic', '摩托罗拉', 'Motorola',
+        '漫步者', 'Edifier', 'JBL', 'BOSE', 'Beats', '魔声', 'Monster',
+        '爱国者', 'SHOKZ', '韶音', '红魔'
+    ]
+
+    def _seed(name: str, suffix: str) -> float:
+        h = hashlib.md5((name + suffix).encode()).hexdigest()
+        return int(h[:8], 16) % 4000 / 1000.0
+
+    name: str = product.name or ''
+    pid: str = product.id or ''
+    image_url: str = product.image_url or ''
+
+    # 外观 (10%)
+    if image_url and len(image_url) > 10:
+        appearance = 7.0 + _seed(name, 'a') / 5
+    else:
+        appearance = 3.0 + _seed(name, 'a') / 5
+    appearance = max(0, min(10, appearance))
+
+    # 物流 (15%)
+    review_total: int = 0
+    for l in product.listings:
+        review_total += (l.review_count or 0)
+    if review_total > 0:
+        logistics = math.log10(review_total + 1) / math.log10(100001) * 10
+    else:
+        logistics = 4.0
+    logistics = max(2, min(10, logistics))
+
+    # 售后 (15%)
+    platform_count: int = len(product.listings)
+    after_sales = min(platform_count * 2.5, 10)
+    after_sales = max(2, after_sales)
+
+    # 品牌 (20%)
+    if product.brand:
+        brand_score = 5.0
+        for kb in KNOWN_BRANDS:
+            if kb.lower() in product.brand.lower():
+                brand_score = 7.0 + _seed(product.brand or name, 'b') / 5
+                break
+    else:
+        brand_score = 3.0
+    brand_score = max(2, min(10, brand_score))
+
+    # 性价比 (25%)
+    lp = product.lowest_price or 0
+    hl = product.historical_low or 0
+    spread = product.price_spread or 0
+    if lp > 0 and hl > 0 and spread > 0:
+        discount_ratio = (1.0 - hl / lp)
+        spread_ratio = min(spread / lp, 0.5)
+        cost_perf = 5.0 + discount_ratio * 3.0 + spread_ratio * 4.0
+    elif lp > 0 and hl > 0:
+        cost_perf = 5.0 + (1.0 - hl / lp) * 3.0
+    else:
+        cost_perf = 5.0
+    cost_perf = max(2, min(10, cost_perf))
+
+    # 品质 (15%)
+    ratings: list[float] = [l.rating for l in product.listings if l.rating and l.rating > 0]
+    if ratings:
+        avg_rating = sum(ratings) / len(ratings)
+        quality = avg_rating * 2.0
+    else:
+        quality = 4.5 + _seed(name, 'q') / 5
+    quality = max(2, min(10, quality))
+
+    score = (
+        appearance * 0.10 +
+        logistics * 0.15 +
+        after_sales * 0.15 +
+        brand_score * 0.20 +
+        cost_perf * 0.25 +
+        quality * 0.15
+    )
+
+    product.aggregate_score = round(score, 1)
+    product.aggregate_rating = round(score, 1)
