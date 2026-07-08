@@ -2,7 +2,6 @@ import { router } from '@kit.ArkUI';
 import { DataProvider } from '../data/DataProvider';
 import { PreferenceManager } from '../utils/PreferenceManager';
 import { UserProfile, Category } from '../models/DataModels';
-import { DataProvider } from '../data/DataProvider';
 import { BehaviorManager } from '../utils/BehaviorManager';
 import { RecommendationEngine } from '../utils/RecommendationEngine';
 
