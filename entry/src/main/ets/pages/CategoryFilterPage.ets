@@ -43,7 +43,6 @@ struct CategoryFilterPage {
     let localGroups: FilterGroup[] =
       MockData.getFilterGroups(this.categoryId)
 
-    // 先立即展示本地筛选项，避免等待网络期间出现整页空白。
     this.filterGroups = localGroups
     this.isLoading = true
 
@@ -79,29 +78,21 @@ struct CategoryFilterPage {
       let i: number = 0
 
       while (i < data.brands.length) {
-        let option: FilterOption = {
+        brandOptions.push({
           id: 'brand_remote_' + i.toString(),
           label: data.brands[i],
           selected: false
-        }
-
-        brandOptions.push(option)
+        })
         i = i + 1
       }
 
-      let brandGroup: FilterGroup = {
+      groups.push({
         name: '品牌',
         type: 'brand',
         options: brandOptions
-      }
-
-      groups.push(brandGroup)
+      })
     } else {
-      this.appendLocalGroupByType(
-        groups,
-        localGroups,
-        'brand'
-      )
+      this.appendLocalGroupByType(groups, localGroups, 'brand')
     }
 
     let priceGroup: FilterGroup =
@@ -110,15 +101,9 @@ struct CategoryFilterPage {
     if (priceGroup.options.length > 0) {
       groups.push(priceGroup)
     } else {
-      this.appendLocalGroupByType(
-        groups,
-        localGroups,
-        'price'
-      )
+      this.appendLocalGroupByType(groups, localGroups, 'price')
     }
 
-    // 动态接口当前只返回品牌和价格。
-    // 特色功能等本地筛选组继续保留，不让 UI 因远程成功而丢失。
     let j: number = 0
 
     while (j < localGroups.length) {
@@ -212,10 +197,6 @@ struct CategoryFilterPage {
     }
   }
 
-  isSelected(optionId: string): boolean {
-    return this.selectedIds.indexOf(optionId) >= 0
-  }
-
   toggleOption(optionId: string): void {
     let currentGroup: FilterGroup | undefined =
       this.findGroupByOptionId(optionId)
@@ -232,12 +213,8 @@ struct CategoryFilterPage {
       } else if (
         currentGroup !== undefined &&
         currentGroup.type === 'price' &&
-        this.isOptionInGroup(
-          currentId,
-          currentGroup
-        )
+        this.isOptionInGroup(currentId, currentGroup)
       ) {
-        // 价格区间保持单选。
       } else {
         newIds.push(currentId)
       }
@@ -377,10 +354,6 @@ struct CategoryFilterPage {
     return undefined
   }
 
-  getSelectedCount(): number {
-    return this.selectedIds.length
-  }
-
   getMatchedProductCount(): number {
     let products: Product[] = MockData.getProducts()
     let count: number = 0
@@ -517,18 +490,11 @@ struct CategoryFilterPage {
           router.back()
         })
 
-        Column({ space: 2 }) {
-          Text(this.categoryName)
-            .fontSize(20)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#1C1C1E')
-
-          Text('筛选商品')
-            .fontSize(11)
-            .fontColor('#8E8E93')
-        }
-        .layoutWeight(1)
-        .alignItems(HorizontalAlign.Start)
+        Text(this.categoryName)
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#1C1C1E')
+          .layoutWeight(1)
 
         if (this.isLoading) {
           Text('更新中')
@@ -555,22 +521,15 @@ struct CategoryFilterPage {
 
       List({ space: 12 }) {
         ListItem() {
-          Column({ space: 4 }) {
-            Text('筛选条件')
-              .fontSize(20)
-              .fontWeight(FontWeight.Bold)
-              .fontColor('#1C1C1E')
-
-            Text('选择条件，快速缩小商品范围')
-              .fontSize(13)
-              .fontColor('#8E8E93')
-          }
-          .width('100%')
-          .alignItems(HorizontalAlign.Start)
-          .padding({
-            left: 2,
-            bottom: 2
-          })
+          Text('筛选条件')
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#1C1C1E')
+            .width('100%')
+            .padding({
+              left: 2,
+              bottom: 2
+            })
         }
 
         ForEach(

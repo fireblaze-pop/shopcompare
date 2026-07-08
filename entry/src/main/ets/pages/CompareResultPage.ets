@@ -15,6 +15,14 @@ struct CompareResultPage {
   @State selectedBrands: string = ''
   @State selectedPriceLabel: string = ''
   @State selectedOtherLabels: string = ''
+  @State summaryHeight: number = 46
+  @State summaryOpacity: number = 1
+  @State summaryBottomMargin: number = 0
+  @State showSummaryBanner: boolean = true
+  @State showSortExpanded: boolean = true
+
+  private summaryTimer: number = -1
+  private summaryHideTimer: number = -1
 
   aboutToAppear(): void {
     this.categoryName = NavParams.categoryName
@@ -23,6 +31,18 @@ struct CompareResultPage {
     this.selectedOtherLabels = NavParams.selectedOtherLabels
 
     this.loadData()
+  }
+
+  aboutToDisappear(): void {
+    if (this.summaryTimer !== -1) {
+      clearTimeout(this.summaryTimer)
+      this.summaryTimer = -1
+    }
+
+    if (this.summaryHideTimer !== -1) {
+      clearTimeout(this.summaryHideTimer)
+      this.summaryHideTimer = -1
+    }
   }
 
   loadData(): void {
@@ -36,9 +56,6 @@ struct CompareResultPage {
       let product: Product = allProducts[i]
       let matches: boolean = true
 
-      // 原代码通过 cat1.length > 4 推导分类字段，
-      // cat1/cat2 等 ID 永远不满足，导致分类筛选失效。
-      // 这里直接使用已传入的 categoryName 匹配 Product.category。
       if (
         this.categoryName.length > 0 &&
         product.category !== this.categoryName
@@ -72,6 +89,44 @@ struct CompareResultPage {
     this.allFilteredProducts = filtered
     this.applySort()
     this.isLoading = false
+
+    this.summaryHeight = 46
+    this.summaryOpacity = 1
+    this.summaryBottomMargin = 0
+    this.showSummaryBanner = true
+    this.showSortExpanded = true
+
+    if (this.summaryTimer !== -1) {
+      clearTimeout(this.summaryTimer)
+      this.summaryTimer = -1
+    }
+
+    if (this.summaryHideTimer !== -1) {
+      clearTimeout(this.summaryHideTimer)
+      this.summaryHideTimer = -1
+    }
+
+    this.summaryTimer = setTimeout(() => {
+      animateTo({
+        duration: 450,
+        curve: Curve.EaseInOut
+      }, () => {
+        this.summaryHeight = 0
+        this.summaryOpacity = 0
+        this.summaryBottomMargin = 0
+      })
+
+      this.summaryTimer = -1
+    }, 1800)
+
+    this.summaryHideTimer = setTimeout(() => {
+      this.showSummaryBanner = false
+      this.summaryHideTimer = -1
+    }, 2300)
+
+    setTimeout(() => {
+      this.showSortExpanded = false
+    }, 3000)
   }
 
   matchesBrand(brand: string): boolean {
@@ -171,13 +226,13 @@ struct CompareResultPage {
           return b.aggregateScore - a.aggregateScore
         }
       )
-    } else if (this.sortType === 'priceLow') {
+    } else if (this.sortType === 'pricePriority') {
       sorted.sort(
         (a: Product, b: Product): number => {
           return a.lowestPrice - b.lowestPrice
         }
       )
-    } else if (this.sortType === 'rating') {
+    } else if (this.sortType === 'ratingPriority') {
       sorted.sort(
         (a: Product, b: Product): number => {
           return b.aggregateRating - a.aggregateRating
@@ -195,6 +250,46 @@ struct CompareResultPage {
 
     this.sortType = type
     this.applySort()
+  }
+
+  getCurrentSortLabel(): string {
+    if (this.sortType === 'pricePriority') {
+      return '价格优先'
+    }
+
+    if (this.sortType === 'ratingPriority') {
+      return '评分优先'
+    }
+
+    return '综合推荐'
+  }
+
+  getCurrentSortColor(): string {
+    if (this.sortType === 'pricePriority') {
+      return '#FF3B30'
+    }
+
+    if (this.sortType === 'ratingPriority') {
+      return '#2D8A4E'
+    }
+
+    return '#5267E8'
+  }
+
+  getCurrentSortBackground(): string {
+    if (this.sortType === 'pricePriority') {
+      return '#FFF1F0'
+    }
+
+    if (this.sortType === 'ratingPriority') {
+      return '#EEF9F1'
+    }
+
+    return '#EEF1FF'
+  }
+
+  toggleSortExpanded(): void {
+    this.showSortExpanded = !this.showSortExpanded
   }
 
   getPlatformCount(): number {
@@ -328,7 +423,7 @@ struct CompareResultPage {
   }
 
   @Builder
-  buildFilterSummary(): void {
+  buildSummaryPanel(): void {
     Column() {
       Text(
         '找到 ' +
@@ -340,71 +435,120 @@ struct CompareResultPage {
         .fontSize(13)
         .fontColor('#8E8E93')
         .width('100%')
-
-      if (this.getSelectedFilterLabels().length > 0) {
-        Scroll() {
-          Row({ space: 8 }) {
-            ForEach(
-              this.getSelectedFilterLabels(),
-              (label: string) => {
-                Text(label)
-                  .fontSize(12)
-                  .fontColor('#5267E8')
-                  .padding({
-                    left: 10,
-                    right: 10,
-                    top: 6,
-                    bottom: 6
-                  })
-                  .backgroundColor('#EEF1FF')
-                  .borderRadius(9)
-              },
-              (label: string) => label
-            )
-          }
-        }
-        .scrollable(ScrollDirection.Horizontal)
-        .scrollBar(BarState.Off)
-        .width('100%')
-        .margin({ top: 10 })
-      }
     }
     .width('100%')
+    .height(this.summaryHeight)
+    .opacity(this.summaryOpacity)
     .padding({
       left: 16,
       right: 16,
       top: 14,
-      bottom: 12
+      bottom: 10
+    })
+    .margin({
+      bottom: this.summaryBottomMargin
     })
     .backgroundColor('#F5F6F8')
+    .clip(true)
   }
 
   @Builder
-  buildSortTabs(): void {
-    Row({ space: 8 }) {
-      this.buildSortTabItem(
-        'recommend',
-        '综合推荐'
-      )
+  buildSortPanel(): void {
+    if (this.showSortExpanded) {
+      Column() {
+        Row() {
+          Text('排序')
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#1C1C1E')
+            .layoutWeight(1)
 
-      this.buildSortTabItem(
-        'priceLow',
-        '价格最低'
-      )
+          Text('收起')
+            .fontSize(12)
+            .fontColor('#5267E8')
+            .onClick(() => {
+              this.toggleSortExpanded()
+            })
+        }
+        .width('100%')
+        .margin({ bottom: 10 })
 
-      this.buildSortTabItem(
-        'rating',
-        '评分最高'
-      )
+        Row({ space: 8 }) {
+          this.buildSortTabItem(
+            'recommend',
+            '综合推荐'
+          )
+
+          this.buildSortTabItem(
+            'pricePriority',
+            '价格优先'
+          )
+
+          this.buildSortTabItem(
+            'ratingPriority',
+            '评分优先'
+          )
+        }
+        .width('100%')
+      }
+      .width('100%')
+      .padding({
+        left: 16,
+        right: 16,
+        top: 8,
+        bottom: 12
+      })
+      .backgroundColor('#F5F6F8')
+    } else {
+      Row() {
+        Text('排序')
+          .fontSize(12)
+          .fontColor('#8E8E93')
+
+        Text(this.getCurrentSortLabel())
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentSortColor())
+          .padding({
+            left: 10,
+            right: 10,
+            top: 5,
+            bottom: 5
+          })
+          .backgroundColor(
+            this.getCurrentSortBackground()
+          )
+          .borderRadius(8)
+          .margin({ left: 8 })
+
+        Blank()
+
+        Text('展开')
+          .fontSize(12)
+          .fontColor('#5267E8')
+      }
+      .width('100%')
+      .padding({
+        left: 14,
+        right: 14,
+        top: 8,
+        bottom: 8
+      })
+      .margin({
+        left: 16,
+        right: 16,
+        bottom: 10
+      })
+      .backgroundColor(Color.White)
+      .border({
+        width: 1,
+        color: '#E8EAF0'
+      })
+      .borderRadius(12)
+      .onClick(() => {
+        this.toggleSortExpanded()
+      })
     }
-    .width('100%')
-    .padding({
-      left: 16,
-      right: 16,
-      top: 8,
-      bottom: 12
-    })
-    .backgroundColor('#F5F6F8')
   }
 
   @Builder
@@ -582,7 +726,7 @@ struct CompareResultPage {
           })
         })
 
-      Button('只看最低价')
+      Button('只看低价')
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
         .fontColor(Color.White)
@@ -640,8 +784,11 @@ struct CompareResultPage {
       } else if (this.products.length === 0) {
         this.buildEmptyState()
       } else {
-        this.buildFilterSummary()
-        this.buildSortTabs()
+        if (this.showSummaryBanner) {
+          this.buildSummaryPanel()
+        }
+
+        this.buildSortPanel()
 
         List({ space: 12 }) {
           ForEach(
