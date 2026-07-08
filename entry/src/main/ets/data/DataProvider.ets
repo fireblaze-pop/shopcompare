@@ -7,22 +7,17 @@ import { HttpClient } from '../utils/HttpClient'
 let sharedHttpClient: HttpClient = new HttpClient()
 
 export class DataProvider {
-  private static mockRepo: MockProductRepository = new MockProductRepository()
   private static remoteRepo: RemoteProductRepository = new RemoteProductRepository(sharedHttpClient)
-  private static productRepo: ProductRepository = DataProvider.remoteRepo
+  private static productRepo: ProductRepository = new MockProductRepository()
   private static recDataSource: RecommendationDataSource = new EmbeddedRecommendationDataSource()
   private static behaviorRepo: BehaviorRepository = BehaviorManager.getInstance()
-  private static remoteLoaded: boolean = false
+  private static initialized: boolean = false
 
   static getHttpClient(): HttpClient {
     return sharedHttpClient
   }
 
   static getProductRepository(): ProductRepository {
-    if (!DataProvider.remoteLoaded) {
-      DataProvider.remoteLoaded = true
-      DataProvider.tryLoadRemote()
-    }
     return DataProvider.productRepo
   }
 
@@ -34,19 +29,20 @@ export class DataProvider {
     return DataProvider.behaviorRepo
   }
 
-  private static async tryLoadRemote(): Promise<void> {
+  static async init(): Promise<void> {
+    if (DataProvider.initialized) {
+      return
+    }
+    DataProvider.initialized = true
     try {
       let response = await sharedHttpClient.get('/products?size=1')
       if (response.statusCode === 200) {
         await DataProvider.remoteRepo.refreshAll()
-        if (DataProvider.remoteRepo.getProducts().length === 0) {
-          DataProvider.productRepo = DataProvider.mockRepo
+        if (DataProvider.remoteRepo.getProducts().length > 0) {
+          DataProvider.productRepo = DataProvider.remoteRepo
         }
-      } else {
-        DataProvider.productRepo = DataProvider.mockRepo
       }
     } catch (e) {
-      DataProvider.productRepo = DataProvider.mockRepo
     }
   }
 

@@ -18,7 +18,7 @@ struct SplashPage {
 
   private async initAndNavigate(): Promise<void> {
     let startTime: number = Date.now();
-    DataProvider.getProductRepository();
+    await DataProvider.init();
     let elapsed: number = Date.now() - startTime;
     let remaining: number = 2000 - elapsed;
     if (remaining < 0) {
