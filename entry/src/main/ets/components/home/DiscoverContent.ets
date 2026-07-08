@@ -1,6 +1,6 @@
 import { router } from '@kit.ArkUI'
 import { Product } from '../../models/DataModels'
-import { MockData } from '../../data/MockData'
+import { DataProvider } from '../../data/DataProvider'
 import { NavParams } from '../../utils/PreferenceManager'
 import { DiscoverProductCard } from './DiscoverProductCard'
 
@@ -143,7 +143,7 @@ export struct DiscoverContent {
   }
 
   private getDisplayProducts(): Product[] {
-    let source: Product[] = MockData.getProducts()
+    let source: Product[] = DataProvider.getProductRepository().getProducts()
     let result: Product[] = []
     let i: number = 0
 

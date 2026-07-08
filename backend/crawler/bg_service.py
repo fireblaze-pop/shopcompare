@@ -72,6 +72,12 @@ class BgCrawlerService:
             for keyword in SEARCH_KEYWORDS:
                 try:
                     products = crawler.search(keyword, page=1)
+                    for pg in range(2, 6):
+                        try:
+                            more = crawler.search(keyword, page=pg)
+                            products.extend(more)
+                        except Exception as e:
+                            print(f'  [{keyword}] page={pg} error: {e}')
                     saved: int = 0
                     for raw in products:
                         if raw.get('price', 0) > 0:

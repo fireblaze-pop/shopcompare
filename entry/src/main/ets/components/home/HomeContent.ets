@@ -1,6 +1,6 @@
 import { router } from '@kit.ArkUI'
 import { Category } from '../../models/DataModels'
-import { MockData } from '../../data/MockData'
+import { DataProvider } from '../../data/DataProvider'
 import { NavParams } from '../../utils/PreferenceManager'
 import { RecommendationItem } from '../../models/RecommendationModels'
 import { SearchBar } from '../SearchBar'
@@ -35,7 +35,7 @@ export struct HomeContent {
             .width('100%')
 
           CategoryIconGrid({
-            categories: MockData.getCategories(),
+            categories: DataProvider.getProductRepository().getCategories(),
             columns: 3,
             onCategoryClick: (category: Category): void => {
               NavParams.categoryId = category.id
