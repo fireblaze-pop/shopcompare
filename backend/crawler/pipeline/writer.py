@@ -18,11 +18,13 @@ def normalize_name(name: str) -> str:
 
 def guess_brand(name: str) -> str:
   brand_list: list[str] = [
-    'Apple', '华为', '小米', 'OPPO', 'vivo', '三星', '联想', '戴尔',
-    '美的', '格力', '海尔', '戴森', '飞利浦', '兰蔻', '雅诗兰黛',
-    'SK-II', '欧莱雅', 'Nike', 'Adidas', 'Zara', 'Coach', '茅台',
-    '三只松鼠', '良品铺子', '百草味', '茅台', '农夫山泉', '丝芙兰',
-    '雅诗兰黛', 'Levi\'s'
+    'Apple', '华为', 'Huawei', '小米', 'Xiaomi', 'OPPO', 'vivo', '三星', 'Samsung',
+    '联想', 'Lenovo', '戴尔', 'Dell', '美的', '格力', 'Gree', '海尔', 'Haier',
+    '戴森', 'Dyson', '飞利浦', 'Philips', '兰蔻', 'Lancome',
+    '雅诗兰黛', 'Estee Lauder', 'SK-II', 'SK2', '欧莱雅', "L'Oreal", 'Loreal',
+    'Nike', 'Adidas', 'Zara', 'Coach', '茅台', 'Moutai',
+    '三只松鼠', '良品铺子', '百草味', '农夫山泉', '丝芙兰', 'Sephora',
+    "Levi's", 'Levis'
   ]
   name_lower: str = name.lower()
   for kw in brand_list:
@@ -31,20 +33,41 @@ def guess_brand(name: str) -> str:
   return ''
 
 
-def find_existing_product(db: Session, name: str, brand: str) -> Optional[Product]:
-  normalized: str = normalize_name(name)
-  if len(brand) > 0:
-    product = db.query(Product).filter(
-      Product.brand == brand,
-      Product.name.contains(normalized[:6])
-    ).first()
-    if product is not None:
-      return product
+BRAND_ALIASES: dict[str, str] = {
+    'Huawei': '华为', 'HUAWEI': '华为',
+    'Xiaomi': '小米', 'Redmi': '小米',
+    'Samsung': '三星', 'Lenovo': '联想', 'Dell': '戴尔',
+    'Dyson': '戴森', 'Philips': '飞利浦',
+    'Lancome': '兰蔻', 'Loreal': '欧莱雅', "L'Oreal": '欧莱雅',
+}
 
-  product = db.query(Product).filter(
-    Product.name == name
-  ).first()
-  return product
+
+def normalize_brand(brand: str) -> str:
+    return BRAND_ALIASES.get(brand, brand)
+
+
+def find_existing_product(db: Session, name: str, brand: str) -> Optional[Product]:
+    normalized: str = normalize_name(name)
+    norm_brand: str = normalize_brand(brand)
+    if len(norm_brand) > 0:
+        product = db.query(Product).filter(
+            Product.brand == norm_brand,
+            Product.name.contains(normalized[:6])
+        ).first()
+        if product is not None:
+            return product
+    if len(brand) > 0:
+        product = db.query(Product).filter(
+            Product.brand == brand,
+            Product.name.contains(normalized[:6])
+        ).first()
+        if product is not None:
+            return product
+
+    product = db.query(Product).filter(
+        Product.name == name
+    ).first()
+    return product
 
 
 def save_raw_product(db: Session, raw: dict) -> Optional[str]:
@@ -54,7 +77,7 @@ def save_raw_product(db: Session, raw: dict) -> Optional[str]:
   if price <= 0:
     return None
 
-  brand: str = raw.get('brand', '') or guess_brand(raw.get('name', ''))
+  brand: str = normalize_brand(raw.get('brand', '') or guess_brand(raw.get('name', '')))
 
   existing = find_existing_product(db, raw.get('name', ''), brand)
 
