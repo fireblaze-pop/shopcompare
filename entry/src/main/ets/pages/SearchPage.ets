@@ -5,12 +5,22 @@ import { NavParams, PreferenceManager } from '../utils/PreferenceManager'
 import { BehaviorManager } from '../utils/BehaviorManager'
 import { DataProvider } from '../data/DataProvider'
 import { HttpClient } from '../utils/HttpClient'
+import { jsonToProduct } from '../data/repository/RemoteProductRepository'
 import { SearchHeader } from '../components/search/SearchHeader'
 import { SearchKeywordPanel } from '../components/search/SearchKeywordPanel'
 import { SearchResultList } from '../components/search/SearchResultList'
 
+interface SearchApiItem {
+  id: string
+  name: string
+  brand: string
+  category: string
+  lowest_price: number
+  image_url: string
+}
+
 interface SearchResult {
-  items: Product[]
+  items: SearchApiItem[]
   total: number
 }
 
@@ -44,10 +54,14 @@ struct SearchPage {
       )
 
       if (resp.statusCode === 200) {
-        let data: SearchResult =
-          JSON.parse(resp.data) as SearchResult
-
-        this.searchResults = data.items
+        let data: SearchResult = JSON.parse(resp.data)
+        let products: Product[] = []
+        let i: number = 0
+        while (i < data.items.length) {
+          products.push(jsonToProduct(data.items[i]))
+          i = i + 1
+        }
+        this.searchResults = products
         return
       }
     } catch (e) {
