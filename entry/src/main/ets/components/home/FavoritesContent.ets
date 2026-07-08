@@ -1,6 +1,6 @@
 import { router } from '@kit.ArkUI'
 import { Product } from '../../models/DataModels'
-import { MockData } from '../../data/MockData'
+import { DataProvider } from '../../data/DataProvider'
 import { NavParams, PreferenceManager } from '../../utils/PreferenceManager'
 import { FavoriteProductCard } from './FavoriteProductCard'
 
@@ -19,7 +19,7 @@ export struct FavoritesContent {
 
   private loadFavorites(): void {
     let ids: string[] = PreferenceManager.getFavoriteIds()
-    let allProducts: Product[] = MockData.getProducts()
+    let allProducts: Product[] = DataProvider.getProductRepository().getProducts()
     let filtered: Product[] = []
 
     let i: number = 0

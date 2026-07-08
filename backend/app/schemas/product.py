@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 
 class ProductResponse(BaseModel):
-    model_config = {'protected_namespaces': ()}
+    model_config = {'protected_namespaces': (), 'from_attributes': True}
 
     id: str
     name: str
@@ -20,9 +20,6 @@ class ProductResponse(BaseModel):
     total_review_count: int
     platform_count: int
     publish_date: str
-
-    class Config:
-        from_attributes = True
 
 
 class ProductDetailResponse(ProductResponse):

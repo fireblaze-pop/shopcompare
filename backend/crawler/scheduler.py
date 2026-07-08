@@ -13,7 +13,7 @@ def run_sync(db: Session) -> int:
     crawler = ManmanbuyCrawler(min_delay=1.0, max_delay=2.0)
 
     for keyword in SEARCH_KEYWORDS:
-        for page in range(1, 4):
+        for page in range(1, 6):
             try:
                 products = crawler.search(keyword, page=page)
                 for raw in products:

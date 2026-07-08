@@ -7,10 +7,11 @@ import { HttpClient } from '../utils/HttpClient'
 let sharedHttpClient: HttpClient = new HttpClient()
 
 export class DataProvider {
+  private static remoteRepo: RemoteProductRepository = new RemoteProductRepository(sharedHttpClient)
   private static productRepo: ProductRepository = new MockProductRepository()
   private static recDataSource: RecommendationDataSource = new EmbeddedRecommendationDataSource()
   private static behaviorRepo: BehaviorRepository = BehaviorManager.getInstance()
-  private static remoteRepo: RemoteProductRepository = new RemoteProductRepository(sharedHttpClient)
+  private static initialized: boolean = false
 
   static getHttpClient(): HttpClient {
     return sharedHttpClient
@@ -28,6 +29,23 @@ export class DataProvider {
     return DataProvider.behaviorRepo
   }
 
+  static async init(): Promise<void> {
+    if (DataProvider.initialized) {
+      return
+    }
+    DataProvider.initialized = true
+    try {
+      let response = await sharedHttpClient.get('/products?size=1')
+      if (response.statusCode === 200) {
+        await DataProvider.remoteRepo.refreshAll()
+        if (DataProvider.remoteRepo.getProducts().length > 0) {
+          DataProvider.productRepo = DataProvider.remoteRepo
+        }
+      }
+    } catch (e) {
+    }
+  }
+
   static switchToRemote(): void {
     DataProvider.productRepo = DataProvider.remoteRepo
   }
@@ -41,16 +59,5 @@ export class DataProvider {
     DataProvider.productRepo = productRepo
     DataProvider.recDataSource = recDataSource
     DataProvider.behaviorRepo = behaviorRepo
-  }
-
-  static async init(): Promise<void> {
-    try {
-      let response = await sharedHttpClient.get('/health')
-      if (response.statusCode === 200) {
-        DataProvider.productRepo = DataProvider.remoteRepo
-        await DataProvider.remoteRepo.refreshAll()
-      }
-    } catch (e) {
-    }
   }
 }

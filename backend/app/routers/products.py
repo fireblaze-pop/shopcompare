@@ -37,7 +37,7 @@ def get_products(
     brand: str = Query(''),
     min_price: float = Query(0.0),
     max_price: float = Query(0.0),
-    sort: str = Query('recommend'),
+    sort: str = Query('newest'),
     db: Session = Depends(get_db)
 ):
     query = db.query(Product)
@@ -53,7 +53,9 @@ def get_products(
     if max_price > 0:
         query = query.filter(Product.lowest_price <= max_price)
 
-    if sort == 'price_low':
+    if sort == 'newest':
+        query = query.order_by(Product.created_at.desc())
+    elif sort == 'price_low':
         query = query.order_by(Product.lowest_price.asc())
     elif sort == 'rating':
         query = query.order_by(Product.aggregate_rating.desc())

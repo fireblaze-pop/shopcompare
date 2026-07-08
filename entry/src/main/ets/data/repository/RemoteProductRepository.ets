@@ -72,26 +72,40 @@ interface SubCategoryJson {
   name: string
 }
 
+function safeNum(val: number): number {
+  if (val === undefined || val === null) {
+    return 0
+  }
+  return val
+}
+
+function safeStr(val: string): string {
+  if (val === undefined || val === null) {
+    return ''
+  }
+  return val
+}
+
 function jsonToProduct(json: ProductJson): Product {
   let product: Product = {
-    id: json.id,
-    name: json.name,
-    modelCode: json.model_code,
-    brand: json.brand,
-    category: json.category,
-    imageUrl: json.image_url,
+    id: safeStr(json.id),
+    name: safeStr(json.name),
+    modelCode: safeStr(json.model_code),
+    brand: safeStr(json.brand),
+    category: safeStr(json.category),
+    imageUrl: safeStr(json.image_url),
     specs: [],
-    aggregateScore: json.aggregate_score,
-    aggregateRating: json.aggregate_rating,
-    totalReviewCount: json.total_review_count,
+    aggregateScore: safeNum(json.aggregate_score),
+    aggregateRating: safeNum(json.aggregate_rating),
+    totalReviewCount: safeNum(json.total_review_count),
     platformListings: [],
-    lowestPrice: json.lowest_price,
-    priceSpread: json.price_spread,
-    historicalLow: json.historical_low,
+    lowestPrice: safeNum(json.lowest_price),
+    priceSpread: safeNum(json.price_spread),
+    historicalLow: safeNum(json.historical_low),
     priceHistory: [],
     reviewTags: [],
-    publishDate: json.publish_date,
-    description: json.description
+    publishDate: safeStr(json.publish_date),
+    description: safeStr(json.description)
   }
   return product
 }
@@ -173,13 +187,13 @@ function jsonToCategory(json: CategoryJson): Category {
 export class RemoteProductRepository implements ProductRepository {
   private client: HttpClient
   private productCache: Product[]
-  private detailCache: Record<string, Product>
+  private detailCache: Product[]
   private categoryCache: Category[]
 
   constructor(client: HttpClient) {
     this.client = client
     this.productCache = []
-    this.detailCache = {}
+    this.detailCache = []
     this.categoryCache = []
   }
 
@@ -191,7 +205,7 @@ export class RemoteProductRepository implements ProductRepository {
   async loadProducts(): Promise<void> {
     let response = await this.client.get('/products?size=100')
     if (response.statusCode === 200) {
-      let data: ProductListJson = JSON.parse(response.data) as ProductListJson
+      let data: ProductListJson = JSON.parse(response.data)
       let products: Product[] = []
       let i: number = 0
       while (i < data.items.length) {
@@ -205,7 +219,7 @@ export class RemoteProductRepository implements ProductRepository {
   async loadCategories(): Promise<void> {
     let response = await this.client.get('/categories')
     if (response.statusCode === 200) {
-      let data: CategoryJson[] = JSON.parse(response.data) as CategoryJson[]
+      let data: CategoryJson[] = JSON.parse(response.data)
       let categories: Category[] = []
       let i: number = 0
       while (i < data.length) {
@@ -219,9 +233,21 @@ export class RemoteProductRepository implements ProductRepository {
   async loadProductDetail(id: string): Promise<Product | undefined> {
     let response = await this.client.get('/products/' + id)
     if (response.statusCode === 200) {
-      let data: ProductDetailJson = JSON.parse(response.data) as ProductDetailJson
+      let data: ProductDetailJson = JSON.parse(response.data)
       let product: Product = jsonToProductDetail(data)
-      this.detailCache[id] = product
+      let found: boolean = false
+      let i: number = 0
+      while (i < this.detailCache.length) {
+        if (this.detailCache[i].id === id) {
+          this.detailCache[i] = product
+          found = true
+          break
+        }
+        i = i + 1
+      }
+      if (!found) {
+        this.detailCache.push(product)
+      }
       return product
     }
     return undefined
@@ -232,16 +258,19 @@ export class RemoteProductRepository implements ProductRepository {
   }
 
   getProductById(id: string): Product | undefined {
-    let cached: Product | undefined = this.detailCache[id]
-    if (cached !== undefined) {
-      return cached
-    }
     let i: number = 0
-    while (i < this.productCache.length) {
-      if (this.productCache[i].id === id) {
-        return this.productCache[i]
+    while (i < this.detailCache.length) {
+      if (this.detailCache[i].id === id) {
+        return this.detailCache[i]
       }
       i = i + 1
+    }
+    let j: number = 0
+    while (j < this.productCache.length) {
+      if (this.productCache[j].id === id) {
+        return this.productCache[j]
+      }
+      j = j + 1
     }
     return undefined
   }

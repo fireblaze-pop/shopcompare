@@ -1,6 +1,6 @@
 import { router } from '@kit.ArkUI'
 import { common, ConfigurationConstant } from '@kit.AbilityKit'
-import { MockData } from '../../data/MockData'
+import { DataProvider } from '../../data/DataProvider'
 import { PreferenceManager } from '../../utils/PreferenceManager'
 import { BehaviorManager } from '../../utils/BehaviorManager'
 import { ProfileHeaderCard } from './ProfileHeaderCard'
@@ -28,7 +28,7 @@ export struct ProfileContent {
       Scroll() {
         Column() {
           ProfileHeaderCard({
-            compareCount: MockData.getProductCount(),
+            compareCount: DataProvider.getProductRepository().getProducts().length,
             favoriteCount: this.favoriteCount
           })
             .margin({
