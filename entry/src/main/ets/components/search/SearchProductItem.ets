@@ -75,7 +75,7 @@ export struct SearchProductItem {
         })
 
         Row() {
-          Text('¥' + this.product.lowestPrice.toFixed(0))
+          Text('Y' + this.product.lowestPrice.toFixed(0))
             .fontSize(16)
             .fontWeight(700)
             .fontColor('#FF3B30')

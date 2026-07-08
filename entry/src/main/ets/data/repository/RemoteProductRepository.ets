@@ -72,38 +72,40 @@ interface SubCategoryJson {
   name: string
 }
 
+function safeNum(val: number): number {
+  if (val === undefined || val === null) {
+    return 0
+  }
+  return val
+}
+
+function safeStr(val: string): string {
+  if (val === undefined || val === null) {
+    return ''
+  }
+  return val
+}
+
 function jsonToProduct(json: ProductJson): Product {
-  let imgUrl: string = json.image_url
-  if (imgUrl === undefined) {
-    imgUrl = ''
-  }
-  let desc: string = json.description
-  if (desc === undefined) {
-    desc = ''
-  }
-  let pubDate: string = json.publish_date
-  if (pubDate === undefined) {
-    pubDate = ''
-  }
   let product: Product = {
-    id: json.id,
-    name: json.name,
-    modelCode: json.model_code,
-    brand: json.brand,
-    category: json.category,
-    imageUrl: imgUrl,
+    id: safeStr(json.id),
+    name: safeStr(json.name),
+    modelCode: safeStr(json.model_code),
+    brand: safeStr(json.brand),
+    category: safeStr(json.category),
+    imageUrl: safeStr(json.image_url),
     specs: [],
-    aggregateScore: json.aggregate_score,
-    aggregateRating: json.aggregate_rating,
-    totalReviewCount: json.total_review_count,
+    aggregateScore: safeNum(json.aggregate_score),
+    aggregateRating: safeNum(json.aggregate_rating),
+    totalReviewCount: safeNum(json.total_review_count),
     platformListings: [],
-    lowestPrice: json.lowest_price,
-    priceSpread: json.price_spread,
-    historicalLow: json.historical_low,
+    lowestPrice: safeNum(json.lowest_price),
+    priceSpread: safeNum(json.price_spread),
+    historicalLow: safeNum(json.historical_low),
     priceHistory: [],
     reviewTags: [],
-    publishDate: pubDate,
-    description: desc
+    publishDate: safeStr(json.publish_date),
+    description: safeStr(json.description)
   }
   return product
 }
