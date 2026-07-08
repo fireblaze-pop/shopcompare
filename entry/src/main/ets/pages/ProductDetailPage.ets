@@ -199,187 +199,292 @@ struct ProductDetailPage {
         if (this.product !== undefined && this.product!.imageUrl.length > 0) {
           Image(this.product!.imageUrl)
             .width('100%')
-            .height(200)
-            .objectFit(ImageFit.Cover)
+            .height(220)
+            .objectFit(ImageFit.Contain)
         }
+
         if (this.product === undefined || this.product!.imageUrl.length === 0) {
-          Text(this.getCategoryEmoji(this.product))
-            .fontSize(64)
+          Image($r('app.media.detail_product_placeholder'))
+            .width(64)
+            .height(64)
+            .objectFit(ImageFit.Contain)
         }
       }
       .width('100%')
-      .height(200)
-      .backgroundColor('#E8E8ED')
-      .borderRadius(12)
+      .height(220)
+      .backgroundColor('#F7F8FA')
+      .borderRadius(18)
+      .border({
+        width: 1,
+        color: '#ECEEF2'
+      })
       .justifyContent(FlexAlign.Center)
       .alignItems(HorizontalAlign.Center)
 
-      Row() {
-        Text('\u25CF')
-          .fontSize(8)
-          .fontColor('#007AFF')
-          .margin({ left: 4, right: 4 })
-        Text('\u25CB')
-          .fontSize(8)
-          .fontColor('#C7C7CC')
-          .margin({ left: 4, right: 4 })
-        Text('\u25CB')
-          .fontSize(8)
-          .fontColor('#C7C7CC')
-          .margin({ left: 4, right: 4 })
+      Row({ space: 6 }) {
+        Column()
+          .width(18)
+          .height(5)
+          .borderRadius(3)
+          .backgroundColor('#5267E8')
+
+        Column()
+          .width(5)
+          .height(5)
+          .borderRadius(3)
+          .backgroundColor('#D9DCE5')
+
+        Column()
+          .width(5)
+          .height(5)
+          .borderRadius(3)
+          .backgroundColor('#D9DCE5')
       }
-      .margin({ top: 10 })
+      .margin({ top: 12 })
       .width('100%')
       .justifyContent(FlexAlign.Center)
     }
     .width('100%')
-    .height(240)
-    .padding({ left: 16, right: 16, top: 16, bottom: 0 })
+    .padding({
+      left: 16,
+      right: 16,
+      top: 16,
+      bottom: 2
+    })
   }
 
   @Builder
   buildBasicInfo(): void {
     Column() {
       Text(this.product!.name)
-        .fontSize(22)
-        .fontWeight(700)
+        .fontSize(23)
+        .fontWeight(FontWeight.Bold)
         .fontColor('#1C1C1E')
         .width('100%')
-        .margin({ bottom: 8 })
+        .margin({ bottom: 12 })
 
-      Row() {
+      Row({ space: 8 }) {
         Text(this.product!.brand)
-          .fontSize(13)
-          .fontColor('#8E8E93')
-        Text(' \u00B7 ' + this.product!.modelCode)
-          .fontSize(13)
-          .fontColor('#8E8E93')
+          .fontSize(12)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#5267E8')
+          .padding({
+            left: 9,
+            right: 9,
+            top: 4,
+            bottom: 4
+          })
+          .backgroundColor('#EEF1FF')
+          .borderRadius(6)
+
+        if (this.product!.modelCode.length > 0) {
+          Text(this.product!.modelCode)
+            .fontSize(12)
+            .fontColor('#6F737B')
+            .padding({
+              left: 9,
+              right: 9,
+              top: 4,
+              bottom: 4
+            })
+            .backgroundColor('#F5F6F8')
+            .borderRadius(6)
+        }
       }
       .width('100%')
-      .margin({ bottom: 6 })
+      .margin({ bottom: 11 })
 
-      Text('发布日期: ' + this.product!.publishDate)
+      Text(this.product!.publishDate + ' 发布')
         .fontSize(13)
         .fontColor('#8E8E93')
         .width('100%')
-        .margin({ bottom: 10 })
+        .margin({ bottom: 12 })
 
-      Text(this.product!.description)
-        .fontSize(14)
-        .fontColor('#3C3C3C')
-        .width('100%')
+      if (this.product!.description.length > 0) {
+        Divider()
+          .strokeWidth(0.5)
+          .color('#ECEEF2')
+          .margin({ bottom: 12 })
+
+        Text(this.product!.description)
+          .fontSize(14)
+          .fontColor('#4C4F56')
+          .lineHeight(22)
+          .width('100%')
+      }
     }
     .width('100%')
     .padding(20)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(16)
-    .margin({ left: 16, right: 16, top: 12 })
+    .backgroundColor(Color.White)
+    .borderRadius(18)
+    .border({
+      width: 1,
+      color: '#ECEEF2'
+    })
+    .margin({
+      left: 16,
+      right: 16,
+      top: 12
+    })
   }
 
   @Builder
   buildPriceSummary(): void {
     Column() {
-      Text('跨平台比价')
-        .fontSize(18)
-        .fontWeight(600)
-        .fontColor('#1C1C1E')
-        .width('100%')
-        .margin({ bottom: 14 })
+      this.buildSectionHeader(
+        '跨平台比价',
+        '快速查看最低价与平台价差'
+      )
 
-      Row() {
-        Column() {
-          Text('价格区间')
+      Row({ space: 12 }) {
+        Column({ space: 5 }) {
+          Text('全网最低')
             .fontSize(12)
             .fontColor('#8E8E93')
-            .margin({ bottom: 4 })
-          Text(formatPrice(this.product!.lowestPrice) + ' - ' + formatPrice(this.getHighestPrice()))
-            .fontSize(22)
-            .fontWeight(700)
-            .fontColor('#1C1C1E')
 
           Text(formatPrice(this.product!.lowestPrice))
-            .fontSize(14)
+            .fontSize(24)
+            .fontWeight(FontWeight.Bold)
             .fontColor('#FF3B30')
-            .fontWeight(600)
-            .margin({ top: 2 })
+
+          Text(
+            '区间 ' +
+            formatPrice(this.product!.lowestPrice) +
+            ' - ' +
+            formatPrice(this.getHighestPrice())
+          )
+            .fontSize(11)
+            .fontColor('#A0A3AA')
         }
+        .layoutWeight(1)
+        .height(98)
+        .padding(14)
+        .backgroundColor('#FFF7F6')
+        .borderRadius(14)
         .alignItems(HorizontalAlign.Start)
 
-        Blank()
-
-        Column() {
-          Text('跨平台价差')
+        Column({ space: 5 }) {
+          Text('平台价差')
             .fontSize(12)
             .fontColor('#8E8E93')
-            .margin({ bottom: 4 })
+
           Text(formatPrice(this.product!.priceSpread))
-            .fontSize(20)
-            .fontWeight(600)
-            .fontColor('#FF3B30')
-            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-            .backgroundColor('#FFEEEE')
-            .borderRadius(8)
+            .fontSize(24)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#5267E8')
+
+          Text('比价后再决定')
+            .fontSize(11)
+            .fontColor('#A0A3AA')
         }
-        .alignItems(HorizontalAlign.Center)
+        .layoutWeight(1)
+        .height(98)
+        .padding(14)
+        .backgroundColor('#F5F6FF')
+        .borderRadius(14)
+        .alignItems(HorizontalAlign.Start)
       }
       .width('100%')
 
       Row() {
-        Text('历史最低: ' + formatPrice(this.product!.historicalLow))
+        Text('历史最低')
+          .fontSize(12)
+          .fontColor('#2D8A4E')
+
+        Text(formatPrice(this.product!.historicalLow))
           .fontSize(13)
-          .fontColor('#34C759')
-          .fontWeight(500)
-          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-          .backgroundColor('#E8F8ED')
-          .borderRadius(6)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#2D8A4E')
+          .margin({ left: 6 })
       }
-      .width('100%')
+      .padding({
+        left: 11,
+        right: 11,
+        top: 6,
+        bottom: 6
+      })
+      .backgroundColor('#EEF9F1')
+      .borderRadius(8)
       .margin({ top: 14 })
+      .alignSelf(ItemAlign.Start)
     }
     .width('100%')
     .padding(20)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(16)
-    .margin({ left: 16, right: 16, top: 12 })
+    .backgroundColor(Color.White)
+    .borderRadius(18)
+    .border({
+      width: 1,
+      color: '#ECEEF2'
+    })
+    .margin({
+      left: 16,
+      right: 16,
+      top: 12
+    })
   }
 
   @Builder
   buildPlatformPriceList(): void {
     Column() {
       Row() {
-        Text('各平台价格')
-          .fontSize(18)
-          .fontWeight(600)
-          .fontColor('#1C1C1E')
+        Column({ space: 4 }) {
+          Text('各平台价格')
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#1C1C1E')
+
+          Text('按平台报价对比')
+            .fontSize(12)
+            .fontColor('#8E8E93')
+        }
+        .alignItems(HorizontalAlign.Start)
 
         Blank()
 
-        Text('按价格排序')
-          .fontSize(13)
-          .fontColor('#007AFF')
+        Text(this.priceSortAsc ? '价格升序' : '价格降序')
+          .fontSize(12)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#5267E8')
+          .padding({
+            left: 10,
+            right: 10,
+            top: 6,
+            bottom: 6
+          })
+          .backgroundColor('#EEF1FF')
+          .borderRadius(8)
           .onClick(() => {
             this.priceSortAsc = !this.priceSortAsc;
             this.sortPlatformListings(this.priceSortAsc);
           })
       }
       .width('100%')
-      .margin({ bottom: 14 })
+      .margin({ bottom: 10 })
 
-      ForEach(this.sortedListings, (listing: PlatformListing, index: number) => {
+      ForEach(this.sortedListings, (listing: PlatformListing) => {
         this.buildPlatformPriceItem(listing)
       })
     }
     .width('100%')
     .padding(20)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(16)
-    .margin({ left: 16, right: 16, top: 12 })
+    .backgroundColor(Color.White)
+    .borderRadius(18)
+    .border({
+      width: 1,
+      color: '#ECEEF2'
+    })
+    .margin({
+      left: 16,
+      right: 16,
+      top: 12
+    })
   }
 
   isListingLowest(listing: PlatformListing): boolean {
     if (this.product === undefined) {
       return false;
     }
+
     return listing.price === this.product!.lowestPrice;
   }
 
@@ -391,16 +496,22 @@ struct ProductDetailPage {
           Row() {
             Text(listing.platform)
               .fontSize(15)
-              .fontWeight(500)
+              .fontWeight(FontWeight.Medium)
               .fontColor('#1C1C1E')
 
             if (this.isListingLowest(listing)) {
               Text('最低价')
                 .fontSize(10)
-                .fontColor('#FFFFFF')
-                .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                .backgroundColor('#FF3B30')
-                .borderRadius(8)
+                .fontWeight(FontWeight.Medium)
+                .fontColor('#FF3B30')
+                .padding({
+                  left: 7,
+                  right: 7,
+                  top: 3,
+                  bottom: 3
+                })
+                .backgroundColor('#FFF1F0')
+                .borderRadius(6)
                 .margin({ left: 8 })
             }
           }
@@ -409,43 +520,50 @@ struct ProductDetailPage {
             Text(listing.rating.toFixed(1))
               .fontSize(12)
               .fontColor('#FF9500')
-            Text(' ' + listing.reviewCount.toString() + '条评价')
+
+            Text(
+              listing.reviewCount.toString() +
+              ' 条评价'
+            )
               .fontSize(12)
               .fontColor('#8E8E93')
-              .margin({ left: 4 })
+              .margin({ left: 6 })
           }
-          .margin({ top: 4 })
+          .margin({ top: 6 })
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
 
         Column() {
           Text(formatPrice(listing.price))
-            .fontSize(18)
-            .fontWeight(700)
-            .fontColor(this.isListingLowest(listing) ? '#FF3B30' : '#1C1C1E')
+            .fontSize(19)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(
+              this.isListingLowest(listing) ?
+              '#FF3B30' :
+              '#1C1C1E'
+            )
 
-          if (listing.inStock) {
-            Text('有货')
-              .fontSize(11)
-              .fontColor('#34C759')
-              .margin({ top: 2 })
-          } else {
-            Text('缺货')
-              .fontSize(11)
-              .fontColor('#8E8E93')
-              .margin({ top: 2 })
-          }
+          Text(listing.inStock ? '有货' : '缺货')
+            .fontSize(11)
+            .fontColor(
+              listing.inStock ?
+              '#2D8A4E' :
+              '#8E8E93'
+            )
+            .margin({ top: 4 })
         }
         .alignItems(HorizontalAlign.End)
       }
       .width('100%')
-      .padding({ top: 12, bottom: 12 })
+      .padding({
+        top: 14,
+        bottom: 14
+      })
 
       Divider()
-        .width('100%')
-        .height(0.5)
-        .color('#E5E5EA')
+        .strokeWidth(0.5)
+        .color('#ECEEF2')
     }
     .width('100%')
   }
@@ -453,164 +571,250 @@ struct ProductDetailPage {
   @Builder
   buildPriceHistoryChart(): void {
     Column() {
-      Text('价格走势（近30天）')
-        .fontSize(18)
-        .fontWeight(600)
-        .fontColor('#1C1C1E')
-        .width('100%')
-        .margin({ bottom: 14 })
+      this.buildSectionHeader(
+        '价格走势',
+        '近30天价格变化'
+      )
 
       Row() {
         if (this.product!.priceHistory.length === 0) {
-          Text('暂无价格数据')
-            .fontSize(14)
-            .fontColor('#8E8E93')
+          Column({ space: 8 }) {
+            Text('暂无价格数据')
+              .fontSize(14)
+              .fontColor('#8E8E93')
+
+            Text('有新的价格记录后会显示在这里')
+              .fontSize(12)
+              .fontColor('#B0B3BA')
+          }
+          .width('100%')
+          .height(130)
+          .justifyContent(FlexAlign.Center)
+          .alignItems(HorizontalAlign.Center)
         } else {
-          ForEach(this.product!.priceHistory, (point: PricePoint, pidx: number) => {
-            Column() {
-              Text(formatPriceBrief(point.price))
-                .fontSize(9)
-                .fontColor('#8E8E93')
-                .margin({ bottom: 4 })
-              Column()
-                .width(20)
-                .height(60 + pidx * 10)
-                .backgroundColor(pidx === 2 ? '#FF3B30' : '#007AFF')
-                .borderRadius(3)
-              Text(point.date.substring(5))
-                .fontSize(8)
-                .fontColor('#C7C7CC')
-                .margin({ top: 4 })
+          ForEach(
+            this.product!.priceHistory,
+            (point: PricePoint, pidx: number) => {
+              Column() {
+                Text(formatPriceBrief(point.price))
+                  .fontSize(10)
+                  .fontColor('#7C7F87')
+                  .margin({ bottom: 6 })
+
+                Column()
+                  .width(24)
+                  .height(60 + pidx * 10)
+                  .backgroundColor(
+                    pidx === 2 ?
+                    '#FF6B61' :
+                    '#7A89F2'
+                  )
+                  .borderRadius({
+                    topLeft: 5,
+                    topRight: 5,
+                    bottomLeft: 2,
+                    bottomRight: 2
+                  })
+
+                Text(point.date.substring(5))
+                  .fontSize(9)
+                  .fontColor('#A8ABB2')
+                  .margin({ top: 6 })
+              }
+              .alignItems(HorizontalAlign.Center)
+              .margin({ right: 12 })
             }
-            .alignItems(HorizontalAlign.Center)
-            .margin({ right: 6 })
-          })
+          )
         }
       }
       .width('100%')
-      .height(140)
+      .height(150)
       .justifyContent(FlexAlign.Start)
       .alignItems(VerticalAlign.Bottom)
-      .padding({ top: 10 })
+      .padding({ top: 8 })
     }
     .width('100%')
     .padding(20)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(16)
-    .margin({ left: 16, right: 16, top: 12 })
+    .backgroundColor(Color.White)
+    .borderRadius(18)
+    .border({
+      width: 1,
+      color: '#ECEEF2'
+    })
+    .margin({
+      left: 16,
+      right: 16,
+      top: 12
+    })
   }
 
   @Builder
   buildRatingsSection(): void {
     Column() {
+      this.buildSectionHeader(
+        '综合评分',
+        '汇总各平台评价表现'
+      )
+
       Row() {
         Column() {
           Text(this.product!.aggregateScore.toString())
-            .fontSize(60)
-            .fontWeight(700)
-            .fontColor('#007AFF')
-            .fontFamily('sans-serif-medium')
+            .fontSize(54)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#5267E8')
 
-          Text(this.product!.aggregateRating.toFixed(1) + ' 分')
-            .fontSize(14)
-            .fontColor('#3C3C3C')
+          Text('综合指数')
+            .fontSize(12)
+            .fontColor('#8E8E93')
             .margin({ top: 2 })
         }
+        .width(112)
+        .height(112)
+        .backgroundColor('#F5F6FF')
+        .borderRadius(18)
+        .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
-        .margin({ right: 24 })
+        .margin({ right: 18 })
 
         Column() {
-          this.buildStarDisplay(this.product!.aggregateRating)
+          this.buildStarDisplay(
+            this.product!.aggregateRating
+          )
 
-          Text('共 ' + this.product!.totalReviewCount.toString() + ' 条评价')
-            .fontSize(13)
-            .fontColor('#8E8E93')
+          Text(
+            this.product!.aggregateRating.toFixed(1) +
+            ' 分'
+          )
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#1C1C1E')
             .margin({ top: 8 })
+
+          Text(
+            '共 ' +
+            this.product!.totalReviewCount.toString() +
+            ' 条评价'
+          )
+            .fontSize(12)
+            .fontColor('#8E8E93')
+            .margin({ top: 5 })
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
       }
       .width('100%')
-      .margin({ bottom: 16 })
+      .margin({ bottom: 18 })
 
       Divider()
-        .width('100%')
-        .height(0.5)
-        .color('#E5E5EA')
-        .margin({ top: 4, bottom: 12 })
+        .strokeWidth(0.5)
+        .color('#ECEEF2')
+        .margin({
+          top: 2,
+          bottom: 14
+        })
 
       Text('各平台评分')
         .fontSize(14)
-        .fontWeight(600)
+        .fontWeight(FontWeight.Medium)
         .fontColor('#1C1C1E')
         .width('100%')
-        .margin({ bottom: 10 })
+        .margin({ bottom: 8 })
 
-      ForEach(this.product!.platformListings, (listing: PlatformListing) => {
-        Row() {
-          Text(listing.platform)
-            .fontSize(13)
-            .fontColor('#3C3C3C')
-            .width(60)
-
+      ForEach(
+        this.product!.platformListings,
+        (listing: PlatformListing) => {
           Row() {
-            ForEach(this.getStarDisplayChars(listing.rating), (ch: string) => {
-              Text(ch)
-                .fontSize(14)
-                .fontColor(ch === '\u2605' ? '#FF9500' : '#C7C7CC')
-            })
+            Text(listing.platform)
+              .fontSize(13)
+              .fontColor('#4C4F56')
+              .width(64)
+
+            Row() {
+              ForEach(
+                this.getStarDisplayChars(listing.rating),
+                (ch: string) => {
+                  Text(ch)
+                    .fontSize(14)
+                    .fontColor(
+                      ch === '\u2605' ?
+                      '#FF9500' :
+                      '#D5D7DD'
+                    )
+                }
+              )
+            }
+
+            Blank()
+
+            Text(listing.rating.toFixed(1))
+              .fontSize(13)
+              .fontColor('#1C1C1E')
+              .fontWeight(FontWeight.Medium)
           }
-
-          Blank()
-
-          Text(listing.rating.toFixed(1))
-            .fontSize(13)
-            .fontColor('#3C3C3C')
-            .fontWeight(500)
+          .width('100%')
+          .padding({
+            top: 7,
+            bottom: 7
+          })
         }
-        .width('100%')
-        .padding({ top: 6, bottom: 6 })
-      })
+      )
     }
     .width('100%')
     .padding(20)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(16)
-    .margin({ left: 16, right: 16, top: 12 })
+    .backgroundColor(Color.White)
+    .borderRadius(18)
+    .border({
+      width: 1,
+      color: '#ECEEF2'
+    })
+    .margin({
+      left: 16,
+      right: 16,
+      top: 12
+    })
   }
 
   @Builder
   buildStarDisplay(rating: number): void {
     Row() {
-      ForEach(this.getStarDisplayChars(rating), (ch: string) => {
-        Text(ch)
-          .fontSize(20)
-          .fontColor(ch === '\u2605' ? '#FF9500' : '#C7C7CC')
-      })
+      ForEach(
+        this.getStarDisplayChars(rating),
+        (ch: string) => {
+          Text(ch)
+            .fontSize(20)
+            .fontColor(
+              ch === '\u2605' ?
+              '#FF9500' :
+              '#D5D7DD'
+            )
+        }
+      )
     }
   }
 
   @Builder
   buildReviewTags(): void {
     Column() {
-      Text('用户评价关键词')
-        .fontSize(18)
-        .fontWeight(600)
-        .fontColor('#1C1C1E')
-        .width('100%')
-        .margin({ bottom: 14 })
+      this.buildSectionHeader(
+        '用户评价关键词',
+        '快速了解常见评价重点'
+      )
 
       if (this.positiveTags.length > 0) {
         Text('好评关键词')
           .fontSize(13)
-          .fontColor('#8E8E93')
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#6F737B')
           .width('100%')
-          .margin({ bottom: 8 })
+          .margin({ bottom: 9 })
 
         Flex({ wrap: FlexWrap.Wrap }) {
-          ForEach(this.positiveTags, (tag: ReviewTag) => {
-            this.buildTagChip(tag, 0)
-          })
+          ForEach(
+            this.positiveTags,
+            (tag: ReviewTag) => {
+              this.buildTagChip(tag, 0)
+            }
+          )
         }
         .width('100%')
         .margin({ bottom: 14 })
@@ -619,57 +823,85 @@ struct ProductDetailPage {
       if (this.negativeTags.length > 0) {
         Text('差评关键词')
           .fontSize(13)
-          .fontColor('#8E8E93')
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#6F737B')
           .width('100%')
-          .margin({ bottom: 8 })
+          .margin({ bottom: 9 })
 
         Flex({ wrap: FlexWrap.Wrap }) {
-          ForEach(this.negativeTags, (tag: ReviewTag) => {
-            this.buildTagChip(tag, 1)
-          })
+          ForEach(
+            this.negativeTags,
+            (tag: ReviewTag) => {
+              this.buildTagChip(tag, 1)
+            }
+          )
         }
         .width('100%')
       }
     }
     .width('100%')
     .padding(20)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(16)
-    .margin({ left: 16, right: 16, top: 12 })
+    .backgroundColor(Color.White)
+    .borderRadius(18)
+    .border({
+      width: 1,
+      color: '#ECEEF2'
+    })
+    .margin({
+      left: 16,
+      right: 16,
+      top: 12
+    })
   }
 
   @Builder
-  buildTagChip(tag: ReviewTag, tagType: number): void {
-    Text(tag.text + ' ' + tag.count.toString())
+  buildTagChip(
+    tag: ReviewTag,
+    tagType: number
+  ): void {
+    Text(
+      tag.text +
+      ' ' +
+      tag.count.toString()
+    )
       .fontSize(12)
-      .fontColor(tagType === 0 ? '#007AFF' : '#FF3B30')
-      .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-      .backgroundColor(tagType === 0 ? '#EBF5FF' : '#FFF0F0')
-      .borderRadius(14)
-      .margin({ right: 8, bottom: 8 })
+      .fontColor(
+        tagType === 0 ?
+        '#2D8A4E' :
+        '#D9485F'
+      )
+      .padding({
+        left: 12,
+        right: 12,
+        top: 7,
+        bottom: 7
+      })
+      .backgroundColor(
+        tagType === 0 ?
+        '#EEF9F1' :
+        '#FFF1F3'
+      )
+      .borderRadius(15)
+      .margin({
+        right: 8,
+        bottom: 8
+      })
   }
 
   @Builder
   buildRadarChart(): void {
     Column() {
-      Text('商品画像')
-        .fontSize(18)
-        .fontWeight(600)
-        .fontColor('#1C1C1E')
-        .width('100%')
-        .margin({ bottom: 14 })
-
-      Row() {
-        Text('六维综合评价')
-          .fontSize(13)
-          .fontColor('#8E8E93')
-      }
-      .width('100%')
-      .margin({ bottom: 10 })
+      this.buildSectionHeader(
+        '商品画像',
+        '六维综合评价'
+      )
 
       if (this.radarDimensions.length >= 6) {
         Row() {
-          RadarChart({ dimensions: this.radarDimensions, chartSize: 300 })
+          RadarChart({
+            dimensions: this.radarDimensions,
+            chartSize: 300
+          })
         }
         .width('100%')
         .justifyContent(FlexAlign.Center)
@@ -677,9 +909,17 @@ struct ProductDetailPage {
     }
     .width('100%')
     .padding(20)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(16)
-    .margin({ left: 16, right: 16, top: 12 })
+    .backgroundColor(Color.White)
+    .borderRadius(18)
+    .border({
+      width: 1,
+      color: '#ECEEF2'
+    })
+    .margin({
+      left: 16,
+      right: 16,
+      top: 12
+    })
   }
 
   @Builder
@@ -696,84 +936,172 @@ struct ProductDetailPage {
       }
     }
     .width('100%')
-    .margin({ left: 16, right: 16, top: 12, bottom: 12 })
+    .margin({
+      left: 16,
+      right: 16,
+      top: 12,
+      bottom: 12
+    })
+  }
+
+  @Builder
+  buildSectionHeader(
+    title: string,
+    subtitle: string
+  ): void {
+    Column({ space: 4 }) {
+      Text(title)
+        .fontSize(18)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#1C1C1E')
+        .width('100%')
+
+      Text(subtitle)
+        .fontSize(12)
+        .fontColor('#8E8E93')
+        .width('100%')
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+    .margin({ bottom: 16 })
+  }
+
+  @Builder
+  buildTopBar(
+    title: string,
+    showFavorite: boolean
+  ): void {
+    Row() {
+      Column() {
+        Image($r('app.media.detail_back'))
+          .width(22)
+          .height(22)
+          .objectFit(ImageFit.Contain)
+      }
+      .width(40)
+      .height(44)
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center)
+      .onClick(() => {
+        router.back();
+      })
+
+      Text(title)
+        .fontSize(19)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#1C1C1E')
+        .layoutWeight(1)
+        .margin({ left: 2 })
+
+      if (showFavorite) {
+        Column() {
+          Image(
+            this.isFavorited ?
+            $r('app.media.detail_favorite_active') :
+            $r('app.media.detail_favorite')
+          )
+            .width(23)
+            .height(23)
+            .objectFit(ImageFit.Contain)
+        }
+        .width(42)
+        .height(42)
+        .borderRadius(13)
+        .backgroundColor(
+          this.isFavorited ?
+          '#FFF1F0' :
+          '#F7F8FA'
+        )
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+        .onClick(() => {
+          this.toggleFavorite();
+        })
+      } else {
+        Column()
+          .width(42)
+          .height(42)
+      }
+    }
+    .width('100%')
+    .height(64)
+    .padding({
+      left: 8,
+      right: 14
+    })
+    .alignItems(VerticalAlign.Center)
+    .backgroundColor(Color.White)
   }
 
   build() {
     Column() {
       if (this.isLoading) {
         Column() {
-          Row() {
-            Text('\u2190')
-              .fontSize(24)
-              .fontColor('#1C1C1E')
-              .padding({ right: 12 })
-              .onClick(() => {
-                router.back();
-              })
-            Text('加载中...')
-              .fontSize(20)
-              .fontWeight(700)
-              .fontColor('#1C1C1E')
-              .layoutWeight(1)
-          }
-          .width('100%')
-          .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-          .backgroundColor('#FFFFFF')
+          this.buildTopBar('加载中...', false)
 
           Column() {
-            ForEach([0, 1, 2, 3], (item: number) => {
-              Row()
-                .width('100%')
-                .height(120)
-                .backgroundColor('#E5E5EA')
-                .borderRadius(16)
-                .margin({ left: 16, right: 16, top: 12 })
-            })
+            ForEach(
+              [0, 1, 2, 3],
+              (item: number) => {
+                Row()
+                  .width('100%')
+                  .height(120)
+                  .backgroundColor('#E7E9EE')
+                  .borderRadius(18)
+                  .margin({
+                    left: 16,
+                    right: 16,
+                    top: 12
+                  })
+              }
+            )
           }
           .width('100%')
           .layoutWeight(1)
-          .backgroundColor('#F2F2F7')
+          .backgroundColor('#F5F6F8')
           .padding({ top: 8 })
         }
         .width('100%')
         .height('100%')
       } else if (this.product === undefined) {
         Column() {
-          Row() {
-            Text('\u2190')
-              .fontSize(24)
-              .fontColor('#1C1C1E')
-              .padding({ right: 12 })
-              .onClick(() => {
-                router.back();
-              })
-            Text('商品详情')
-              .fontSize(20)
-              .fontWeight(700)
-              .fontColor('#1C1C1E')
-              .layoutWeight(1)
-          }
-          .width('100%')
-          .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-          .backgroundColor('#FFFFFF')
+          this.buildTopBar('商品详情', false)
 
-          Column() {
-            Text('\uD83D\uDE22')
-              .fontSize(64)
-              .margin({ bottom: 16 })
+          Column({ space: 14 }) {
+            Column() {
+              Image($r('app.media.detail_not_found'))
+                .width(44)
+                .height(44)
+                .objectFit(ImageFit.Contain)
+            }
+            .width(78)
+            .height(78)
+            .borderRadius(24)
+            .backgroundColor('#EEF1FF')
+            .justifyContent(FlexAlign.Center)
+            .alignItems(HorizontalAlign.Center)
+
             Text('商品未找到')
-              .fontSize(16)
-              .fontColor('#3C3C3C')
-              .fontWeight(500)
-            Button('返回')
-              .fontSize(15)
-              .fontColor('#007AFF')
-              .backgroundColor('#FFFFFF')
-              .borderRadius(20)
-              .borderWidth(1)
-              .borderColor('#007AFF')
-              .margin({ top: 20 })
+              .fontSize(18)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#1C1C1E')
+
+            Text('商品可能已下架或暂时无法加载')
+              .fontSize(13)
+              .fontColor('#8E8E93')
+
+            Button('返回上一页')
+              .fontSize(14)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(Color.White)
+              .backgroundColor('#5267E8')
+              .borderRadius(13)
+              .height(42)
+              .padding({
+                left: 26,
+                right: 26
+              })
+              .margin({ top: 4 })
               .onClick(() => {
                 router.back();
               })
@@ -782,36 +1110,13 @@ struct ProductDetailPage {
           .layoutWeight(1)
           .justifyContent(FlexAlign.Center)
           .alignItems(HorizontalAlign.Center)
-          .backgroundColor('#F2F2F7')
+          .backgroundColor('#F5F6F8')
         }
         .width('100%')
         .height('100%')
       } else {
         Column() {
-          Row() {
-            Text('\u2190')
-              .fontSize(24)
-              .fontColor('#1C1C1E')
-              .padding({ right: 12 })
-              .onClick(() => {
-                router.back();
-              })
-            Text('商品详情')
-              .fontSize(20)
-              .fontWeight(700)
-              .fontColor('#1C1C1E')
-              .layoutWeight(1)
-
-            Text(this.isFavorited ? '\u2764' : '\u2661')
-              .fontSize(22)
-              .fontColor(this.isFavorited ? '#FF3B30' : '#8E8E93')
-              .onClick(() => {
-                this.toggleFavorite();
-              })
-          }
-          .width('100%')
-          .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-          .backgroundColor('#FFFFFF')
+          this.buildTopBar('商品详情', true)
 
           Scroll() {
             Column() {
@@ -826,48 +1131,69 @@ struct ProductDetailPage {
               this.buildSimilarProducts()
             }
             .width('100%')
-            .padding({ bottom: 80 })
+            .padding({ bottom: 86 })
           }
           .width('100%')
           .layoutWeight(1)
-          .backgroundColor('#F2F2F7')
+          .backgroundColor('#F5F6F8')
           .scrollBar(BarState.Off)
 
-          Row() {
+          Row({ space: 12 }) {
             Button('查看商品')
-              .fontSize(16)
-              .fontColor('#FFFFFF')
-              .backgroundColor('#007AFF')
-              .borderRadius(24)
+              .fontSize(15)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(Color.White)
+              .backgroundColor('#5267E8')
+              .borderRadius(14)
               .layoutWeight(1)
-              .height(48)
+              .height(50)
               .onClick(() => {
-                promptAction.showToast({ message: '跳转至商品详情' });
+                promptAction.showToast({
+                  message: '跳转至商品详情'
+                });
               })
 
-            Blank().width(12)
-
-            Button(this.isFavorited ? '已收藏' : '加入收藏')
-              .fontSize(16)
-              .fontColor(this.isFavorited ? '#007AFF' : '#FFFFFF')
-              .backgroundColor(this.isFavorited ? '#FFFFFF' : '#007AFF')
-              .borderRadius(24)
-              .borderWidth(this.isFavorited ? 1 : 0)
-              .borderColor(this.isFavorited ? '#007AFF' : Color.Transparent)
+            Button(
+              this.isFavorited ?
+              '已收藏' :
+              '加入收藏'
+            )
+              .fontSize(15)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(
+                this.isFavorited ?
+                '#5267E8' :
+                '#5267E8'
+              )
+              .backgroundColor(
+                this.isFavorited ?
+                '#EEF1FF' :
+                Color.White
+              )
+              .borderRadius(14)
+              .border({
+                width: 1,
+                color: '#5267E8'
+              })
               .layoutWeight(1)
-              .height(48)
+              .height(50)
               .onClick(() => {
                 this.toggleFavorite();
               })
           }
           .width('100%')
-          .padding({ left: 16, right: 16, top: 10, bottom: 10 })
-          .backgroundColor('#FFFFFF')
-          .height(64)
+          .height(70)
+          .padding({
+            left: 16,
+            right: 16,
+            top: 10,
+            bottom: 10
+          })
+          .backgroundColor(Color.White)
         }
         .width('100%')
         .height('100%')
-        .backgroundColor('#F2F2F7')
+        .backgroundColor('#F5F6F8')
       }
     }
     .width('100%')

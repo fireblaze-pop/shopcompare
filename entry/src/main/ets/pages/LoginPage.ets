@@ -12,13 +12,14 @@ interface LoginResp {
 @Entry
 @Component
 struct LoginPage {
-  @State phone: string = '13800000000'
-  @State password: string = 'test123456'
+  @State phone: string = ''
+  @State password: string = ''
   @State code: string = ''
   @State isPasswordMode: boolean = true
   @State isLoading: boolean = false
   @State countdown: number = 0
-  @State canSendCode: boolean = true
+  @State canSendCode: boolean = false
+
   private timerId: number = -1
   private http: HttpClient = DataProvider.getHttpClient()
 
@@ -31,13 +32,18 @@ struct LoginPage {
 
   sendCode(): void {
     if (this.phone.length !== 11) {
-      promptAction.showToast({ message: '请输入正确的手机号' })
+      promptAction.showToast({
+        message: '请输入正确的手机号'
+      })
       return
     }
+
     this.countdown = 60
     this.canSendCode = false
+
     this.timerId = setInterval(() => {
       this.countdown = this.countdown - 1
+
       if (this.countdown <= 0) {
         clearInterval(this.timerId)
         this.timerId = -1
@@ -49,260 +55,449 @@ struct LoginPage {
 
   async handlePasswordLogin(): Promise<void> {
     if (this.phone.length !== 11) {
-      promptAction.showToast({ message: '请输入正确的手机号' })
+      promptAction.showToast({
+        message: '请输入正确的手机号'
+      })
       return
     }
+
     if (this.password.length < 6) {
-      promptAction.showToast({ message: '密码至少6位' })
+      promptAction.showToast({
+        message: '密码至少6位'
+      })
       return
     }
+
     this.isLoading = true
 
-    let body: string = '{"phone":"' + this.phone + '","password":"' + this.password + '"}'
+    let body: string =
+      '{"phone":"' + this.phone +
+        '","password":"' + this.password + '"}'
+
     let resp = await this.http.post('/auth/login', body)
+
     this.isLoading = false
 
     if (resp.statusCode === 200) {
-      let result: LoginResp = JSON.parse(resp.data) as LoginResp
+      let result: LoginResp =
+        JSON.parse(resp.data) as LoginResp
+
       this.http.setToken(result.access_token)
       PreferenceManager.setCurrentUserId(result.user_id)
+
       this.navigateAfterLogin()
     } else {
-      promptAction.showToast({ message: '登录失败：手机号或密码错误' })
+      promptAction.showToast({
+        message: '登录失败：手机号或密码错误'
+      })
+
       this.password = ''
     }
   }
 
   async handleCodeLogin(): Promise<void> {
     if (this.phone.length !== 11) {
+      promptAction.showToast({
+        message: '请输入正确的手机号'
+      })
       return
     }
+
     if (this.code.length < 6) {
+      promptAction.showToast({
+        message: '请输入6位验证码'
+      })
       return
     }
+
     this.isLoading = true
 
-    let body: string = '{"phone":"' + this.phone + '","code":"' + this.code + '"}'
+    let body: string =
+      '{"phone":"' + this.phone +
+        '","code":"' + this.code + '"}'
+
     let resp = await this.http.post('/auth/login-code', body)
+
     this.isLoading = false
 
     if (resp.statusCode === 200) {
-      let result: LoginResp = JSON.parse(resp.data) as LoginResp
+      let result: LoginResp =
+        JSON.parse(resp.data) as LoginResp
+
       this.http.setToken(result.access_token)
       PreferenceManager.setCurrentUserId(result.user_id)
+
       this.navigateAfterLogin()
     } else {
-      promptAction.showToast({ message: '验证码错误或已过期' })
+      promptAction.showToast({
+        message: '验证码错误或已过期'
+      })
+
       this.code = ''
     }
   }
 
   navigateAfterLogin(): void {
-    let firstLaunch: boolean = PreferenceManager.isFirstLaunch()
+    let firstLaunch: boolean =
+      PreferenceManager.isFirstLaunch()
+
     if (firstLaunch) {
-      router.pushUrl({ url: 'pages/QuestionnairePage' })
+      router.pushUrl({
+        url: 'pages/QuestionnairePage'
+      })
     } else {
-      router.replaceUrl({ url: 'pages/HomePage' })
+      router.replaceUrl({
+        url: 'pages/HomePage'
+      })
     }
   }
 
   goRegister(): void {
-    router.pushUrl({ url: 'pages/RegisterPage' })
+    router.pushUrl({
+      url: 'pages/RegisterPage'
+    })
   }
 
   build() {
     Column() {
       Scroll() {
         Column() {
-          Text('欢迎使用')
-            .fontSize(28)
-            .fontWeight(700)
-            .fontColor('#1C1C1E')
-            .margin({ top: 60, bottom: 8 })
+          // 品牌区域
+          Column({ space: 8 }) {
+            Column() {
+              Text('比')
+                .fontSize(26)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(Color.White)
+            }
+            .width(56)
+            .height(56)
+            .borderRadius(16)
+            .backgroundColor('#1677FF')
+            .justifyContent(FlexAlign.Center)
+            .alignItems(HorizontalAlign.Center)
+            .margin({ bottom: 8 })
 
-          Text('登录后开启智能比价体验')
-            .fontSize(15)
-            .fontColor('#8E8E93')
-            .margin({ bottom: 40 })
-
-          Row() {
-            Text('+86')
-              .fontSize(15)
+            Text('欢迎使用 ShopCompare')
+              .fontSize(25)
+              .fontWeight(FontWeight.Bold)
               .fontColor('#1C1C1E')
-              .margin({ left: 16, right: 12 })
 
-            Column()
-              .width(1)
-              .height(24)
-              .backgroundColor('#D1D1D6')
-
-            TextInput({ placeholder: '请输入手机号' })
-              .type(InputType.Number)
-              .maxLength(11)
-              .fontSize(15)
-              .backgroundColor(Color.Transparent)
-              .layoutWeight(1)
-              .margin({ left: 12, right: 16 })
-              .onChange((value: string) => {
-                this.phone = value
-                this.canSendCode = value.length === 11 && this.countdown === 0
-              })
+            Text('登录后同步收藏、偏好与价格提醒')
+              .fontSize(14)
+              .fontColor('#8E8E93')
           }
           .width('100%')
-          .height(48)
-          .backgroundColor('#F2F2F7')
-          .borderRadius(12)
-          .margin({ left: 20, right: 20 })
+          .alignItems(HorizontalAlign.Center)
+          .margin({
+            top: 52,
+            bottom: 28
+          })
 
-          if (this.isPasswordMode) {
-            TextInput({ placeholder: '请输入密码（6-20位）' })
-              .type(InputType.Password)
-              .maxLength(20)
-              .fontSize(15)
-              .backgroundColor('#F2F2F7')
-              .borderRadius(12)
-              .height(48)
-              .width('100%')
-              .margin({ left: 20, right: 20, top: 16 })
-              .onChange((value: string) => {
-                this.password = value
-              })
-          } else {
-            Button(this.countdown > 0 ?
-              '重新发送(' + this.countdown.toString() + 's)' : '获取验证码')
-              .fontSize(14)
-              .fontColor(Color.White)
-              .backgroundColor(this.canSendCode ? '#007AFF' : '#8E8E93')
-              .borderRadius(22)
-              .height(44)
-              .width('100%')
-              .margin({ left: 20, right: 20, top: 16 })
-              .enabled(this.canSendCode)
+          // 登录方式切换
+          Column() {
+            Row() {
+              Row() {
+                Text('密码登录')
+                  .fontSize(14)
+                  .fontWeight(
+                    this.isPasswordMode ?
+                      FontWeight.Medium :
+                      FontWeight.Normal
+                  )
+                  .fontColor(
+                    this.isPasswordMode ?
+                      '#1C1C1E' :
+                      '#8E8E93'
+                  )
+              }
+              .layoutWeight(1)
+              .height(40)
+              .justifyContent(FlexAlign.Center)
+              .alignItems(VerticalAlign.Center)
+              .backgroundColor(
+                this.isPasswordMode ?
+                  Color.White :
+                  Color.Transparent
+              )
+              .borderRadius(10)
               .onClick(() => {
-                this.sendCode()
+                this.isPasswordMode = true
               })
 
-            TextInput({ placeholder: '请输入验证码' })
-              .type(InputType.Number)
-              .maxLength(6)
-              .fontSize(15)
-              .backgroundColor('#F2F2F7')
-              .borderRadius(12)
-              .height(48)
-              .width('100%')
-              .margin({ left: 20, right: 20, top: 16 })
-              .onChange((value: string) => {
-                this.code = value
+              Row() {
+                Text('验证码登录')
+                  .fontSize(14)
+                  .fontWeight(
+                    !this.isPasswordMode ?
+                      FontWeight.Medium :
+                      FontWeight.Normal
+                  )
+                  .fontColor(
+                    !this.isPasswordMode ?
+                      '#1C1C1E' :
+                      '#8E8E93'
+                  )
+              }
+              .layoutWeight(1)
+              .height(40)
+              .justifyContent(FlexAlign.Center)
+              .alignItems(VerticalAlign.Center)
+              .backgroundColor(
+                !this.isPasswordMode ?
+                  Color.White :
+                  Color.Transparent
+              )
+              .borderRadius(10)
+              .onClick(() => {
+                this.isPasswordMode = false
               })
+            }
+            .width('100%')
+            .height(44)
+            .padding(2)
+            .backgroundColor('#ECEFF4')
+            .borderRadius(12)
           }
+          .width('100%')
+          .padding({
+            left: 24,
+            right: 24
+          })
+          .margin({
+            bottom: 20
+          })
 
-          if (this.isPasswordMode) {
-            Button(this.isLoading ? '登录中...' : '登录')
-              .fontSize(16)
-              .fontWeight(600)
-              .fontColor(Color.White)
-              .backgroundColor(!this.isLoading ? '#007AFF' : '#8E8E93')
-              .borderRadius(22)
-              .height(48)
-              .width('100%')
-              .margin({ left: 20, right: 20, top: 24 })
-              .enabled(!this.isLoading)
-              .onClick(() => {
-                this.handlePasswordLogin()
-              })
-          } else {
-            Button(this.isLoading ? '验证中...' : '登录')
-              .fontSize(16)
-              .fontWeight(600)
-              .fontColor(Color.White)
-              .backgroundColor(!this.isLoading ? '#007AFF' : '#8E8E93')
-              .borderRadius(22)
-              .height(48)
-              .width('100%')
-              .margin({ left: 20, right: 20, top: 24 })
-              .enabled(!this.isLoading)
-              .onClick(() => {
-                this.handleCodeLogin()
-              })
-          }
+          // 输入区域
+          Column({ space: 14 }) {
+            // 手机号
+            Row() {
+              Text('+86')
+                .fontSize(15)
+                .fontColor('#1C1C1E')
+                .margin({
+                  left: 16,
+                  right: 14
+                })
 
-          Row() {
+              Column()
+                .width(1)
+                .height(22)
+                .backgroundColor('#E0E2E7')
+
+              TextInput({
+                text: this.phone,
+                placeholder: '请输入手机号'
+              })
+                .type(InputType.Number)
+                .maxLength(11)
+                .fontSize(15)
+                .fontColor('#1C1C1E')
+                .placeholderColor('#A0A3AA')
+                .backgroundColor(Color.Transparent)
+                .border({
+                  width: 0
+                })
+                .layoutWeight(1)
+                .height(52)
+                .padding({
+                  left: 14,
+                  right: 16
+                })
+                .onChange((value: string) => {
+                  this.phone = value
+                  this.canSendCode =
+                    value.length === 11 &&
+                      this.countdown === 0
+                })
+            }
+            .width('100%')
+            .height(52)
+            .backgroundColor(Color.White)
+            .border({
+              width: 1,
+              color: '#E6E8EE'
+            })
+            .borderRadius(14)
+            .alignItems(VerticalAlign.Center)
+
             if (this.isPasswordMode) {
-              Text('使用验证码登录')
-                .fontSize(14)
-                .fontColor('#007AFF')
-                .onClick(() => {
-                  this.isPasswordMode = false
+              // 密码
+              TextInput({
+                text: this.password,
+                placeholder: '请输入密码（6-20位）'
+              })
+                .type(InputType.Password)
+                .maxLength(20)
+                .fontSize(15)
+                .fontColor('#1C1C1E')
+                .placeholderColor('#A0A3AA')
+                .backgroundColor(Color.White)
+                .border({
+                  width: 1,
+                  color: '#E6E8EE'
+                })
+                .borderRadius(14)
+                .height(52)
+                .width('100%')
+                .padding({
+                  left: 16,
+                  right: 12
+                })
+                .onChange((value: string) => {
+                  this.password = value
                 })
             } else {
-              Text('使用密码登录')
-                .fontSize(14)
-                .fontColor('#007AFF')
-                .onClick(() => {
-                  this.isPasswordMode = true
+              // 验证码
+              Row() {
+                TextInput({
+                  text: this.code,
+                  placeholder: '请输入验证码'
                 })
+                  .type(InputType.Number)
+                  .maxLength(6)
+                  .fontSize(15)
+                  .fontColor('#1C1C1E')
+                  .placeholderColor('#A0A3AA')
+                  .backgroundColor(Color.Transparent)
+                  .border({
+                    width: 0
+                  })
+                  .layoutWeight(1)
+                  .height(52)
+                  .padding({
+                    left: 16,
+                    right: 8
+                  })
+                  .onChange((value: string) => {
+                    this.code = value
+                  })
+
+                Text(
+                  this.countdown > 0 ?
+                    this.countdown.toString() + 's后重试' :
+                    '获取验证码'
+                )
+                  .fontSize(14)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(
+                    this.canSendCode ?
+                      '#1677FF' :
+                      '#AEAEB2'
+                  )
+                  .margin({
+                    right: 16
+                  })
+                  .onClick(() => {
+                    if (this.canSendCode) {
+                      this.sendCode()
+                    }
+                  })
+              }
+              .width('100%')
+              .height(52)
+              .backgroundColor(Color.White)
+              .border({
+                width: 1,
+                color: '#E6E8EE'
+              })
+              .borderRadius(14)
+              .alignItems(VerticalAlign.Center)
             }
           }
           .width('100%')
-          .justifyContent(FlexAlign.Center)
-          .margin({ top: 12 })
+          .padding({
+            left: 24,
+            right: 24
+          })
 
-          Row() {
-            Divider()
-              .layoutWeight(1)
-              .color('#D1D1D6')
-
-            Text('快速操作')
-              .fontSize(12)
-              .fontColor('#8E8E93')
-              .margin({ left: 12, right: 12 })
-
-            Divider()
-              .layoutWeight(1)
-              .color('#D1D1D6')
+          // 主登录按钮
+          Column() {
+            Button(
+              this.isLoading ?
+                (this.isPasswordMode ? '登录中...' : '验证中...') :
+                '登录'
+            )
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(Color.White)
+              .backgroundColor(
+                this.isLoading ?
+                  '#AFCBFF' :
+                  '#1677FF'
+              )
+              .borderRadius(14)
+              .height(50)
+              .width('100%')
+              .enabled(!this.isLoading)
+              .onClick(() => {
+                if (this.isPasswordMode) {
+                  this.handlePasswordLogin()
+                } else {
+                  this.handleCodeLogin()
+                }
+              })
           }
           .width('100%')
-          .alignItems(VerticalAlign.Center)
-          .margin({ left: 20, right: 20, top: 32, bottom: 24 })
+          .padding({
+            left: 24,
+            right: 24
+          })
+          .margin({
+            top: 22
+          })
 
-          Row() {
-            Button('注册')
-              .fontSize(16)
-              .fontWeight(600)
-              .fontColor(Color.White)
-              .backgroundColor('#007AFF')
-              .borderRadius(22)
-              .height(48)
-              .layoutWeight(1)
-              .margin({ right: 12 })
+          // 注册入口
+          Row({ space: 4 }) {
+            Text('还没有账号？')
+              .fontSize(14)
+              .fontColor('#8E8E93')
+
+            Text('立即注册')
+              .fontSize(14)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#1677FF')
               .onClick(() => {
                 this.goRegister()
               })
-
-            Button('跳过登录')
-              .fontSize(16)
-              .fontColor('#007AFF')
-              .backgroundColor('#FFFFFF')
-              .borderRadius(22)
-              .borderWidth(1)
-              .borderColor('#007AFF')
-              .height(48)
-              .layoutWeight(1)
-              .onClick(() => {
-                this.navigateAfterLogin()
-              })
           }
           .width('100%')
-          .margin({ left: 20, right: 20, bottom: 20 })
+          .justifyContent(FlexAlign.Center)
+          .margin({
+            top: 18
+          })
 
+          // 跳过登录
+          Text('暂不登录，先逛逛')
+            .fontSize(14)
+            .fontColor('#62656C')
+            .padding({
+              left: 16,
+              right: 16,
+              top: 8,
+              bottom: 8
+            })
+            .onClick(() => {
+              this.navigateAfterLogin()
+            })
+            .margin({
+              top: 8
+            })
+
+          // 隐私政策
           Text('登录即表示同意《隐私政策》')
             .fontSize(12)
-            .fontColor('#8E8E93')
+            .fontColor('#9A9DA4')
             .textAlign(TextAlign.Center)
             .onClick(() => {
-              router.pushUrl({ url: 'pages/PrivacyPage' })
+              router.pushUrl({
+                url: 'pages/PrivacyPage'
+              })
             })
-            .margin({ bottom: 40 })
+            .margin({
+              top: 30,
+              bottom: 40
+            })
         }
         .width('100%')
         .alignItems(HorizontalAlign.Center)
@@ -313,6 +508,6 @@ struct LoginPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F2F2F7')
+    .backgroundColor('#F7F8FA')
   }
 }

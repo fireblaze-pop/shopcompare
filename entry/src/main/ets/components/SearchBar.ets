@@ -1,54 +1,56 @@
 @Component
 export struct SearchBar {
-  @Prop placeholder: string = '\u641C\u7D22\u5546\u54C1\u3001\u54C1\u7C7B...'
+  @Prop placeholder: string = '搜商品、品牌或型号'
   @Prop inputValue: string = ''
-  onChange: (value: string) => void = (value: string) => {}
-  onInputFocus: () => void = () => {}
-  onInputBlur: () => void = () => {}
-  onSearchClick: () => void = () => {}
+
+  onChange: (value: string) => void = (value: string): void => {}
+  onInputFocus: () => void = (): void => {}
+  onInputBlur: () => void = (): void => {}
+  onSearchClick: () => void = (): void => {}
 
   build() {
     Row() {
-      Text('\uD83D\uDD0D')
-        .fontSize(16)
-        .margin({ left: 12 })
+      Row({ space: 8 }) {
+        Image($r('app.media.icon_search'))
+          .width(18)
+          .height(18)
+          .objectFit(ImageFit.Contain)
 
-      TextInput({ text: this.inputValue, placeholder: this.placeholder })
-        .fontSize(15)
-        .fontColor('#1C1C1E')
-        .placeholderColor('#8E8E93')
-        .backgroundColor(Color.Transparent)
-        .border({ width: 0 })
-        .layoutWeight(1)
-        .height(44)
-        .padding({ left: 8, right: 8 })
-        .enabled(false)
-        .onChange((value: string) => {
-          this.onChange(value)
-        })
-
-      if (this.inputValue.length > 0) {
-        Text('\u2715')
+        Text(this.inputValue.length > 0 ? this.inputValue : this.placeholder)
           .fontSize(14)
-          .fontColor('#8E8E93')
-          .width(28)
-          .height(28)
-          .textAlign(TextAlign.Center)
-          .borderRadius(14)
-          .backgroundColor('#D1D1D6')
-          .margin({ right: 8 })
-          .onClick(() => {
-            this.onChange('')
-          })
+          .fontColor(this.inputValue.length > 0 ? '#1C1C1E' : '#9A9AA1')
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
+      .layoutWeight(1)
+      .height('100%')
+      .padding({ left: 14, right: 10 })
+      .alignItems(VerticalAlign.Center)
+      .onClick(() => {
+        this.onSearchClick()
+      })
+
+      Button('搜索')
+        .fontSize(15)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(Color.White)
+        .backgroundColor('#5267E8')
+        .width(70)
+        .height(40)
+        .borderRadius(12)
+        .margin({ right: 4 })
+        .onClick(() => {
+          this.onSearchClick()
+        })
     }
     .width('100%')
-    .height(44)
-    .borderRadius(22)
-    .backgroundColor('#F2F2F7')
-    .alignItems(VerticalAlign.Center)
-    .onClick(() => {
-      this.onSearchClick()
+    .height(50)
+    .backgroundColor(Color.White)
+    .border({
+      width: 1.5,
+      color: '#5267E8'
     })
+    .borderRadius(16)
+    .alignItems(VerticalAlign.Center)
   }
 }

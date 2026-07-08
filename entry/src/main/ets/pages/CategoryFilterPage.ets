@@ -1,9 +1,14 @@
-import { router } from '@kit.ArkUI';
-import { FilterGroup, FilterOption } from '../models/DataModels';
-import { MockData } from '../data/MockData';
-import { NavParams } from '../utils/PreferenceManager';
-import { DataProvider } from '../data/DataProvider';
-import { HttpClient } from '../utils/HttpClient';
+import { router } from '@kit.ArkUI'
+import {
+  FilterGroup,
+  FilterOption,
+  Product
+} from '../models/DataModels'
+import { MockData } from '../data/MockData'
+import { NavParams } from '../utils/PreferenceManager'
+import { DataProvider } from '../data/DataProvider'
+import { HttpClient } from '../utils/HttpClient'
+import { FilterGroupCard } from '../components/filter/FilterGroupCard'
 
 interface FiltersResponse {
   category: string
@@ -20,277 +25,593 @@ interface PriceRange {
 @Entry
 @Component
 struct CategoryFilterPage {
-  @State categoryName: string = '';
-  @State categoryId: string = '';
-  @State filterGroups: FilterGroup[] = [];
-  @State selectedIds: string[] = [];
-  @State isLoading: boolean = true;
+  @State categoryName: string = ''
+  @State categoryId: string = ''
+  @State filterGroups: FilterGroup[] = []
+  @State selectedIds: string[] = []
+  @State isLoading: boolean = false
+
   private http: HttpClient = DataProvider.getHttpClient()
 
   aboutToAppear(): void {
-    this.categoryName = NavParams.categoryName;
-    this.categoryId = NavParams.categoryId;
-    this.loadFilters();
+    this.categoryName = NavParams.categoryName
+    this.categoryId = NavParams.categoryId
+    this.loadFilters()
   }
 
   async loadFilters(): Promise<void> {
+    let localGroups: FilterGroup[] =
+      MockData.getFilterGroups(this.categoryId)
+
+    this.filterGroups = localGroups
     this.isLoading = true
+
     try {
-      let resp = await this.http.get('/filters?category=' + this.categoryName)
-      if (resp.statusCode === 200) {
-        let data: FiltersResponse = JSON.parse(resp.data) as FiltersResponse
-        this.filterGroups = this.buildFilterGroups(data)
-        this.isLoading = false
-        return
+      let resp = await this.http.get(
+        '/filters?category=' + this.categoryName
+      )
+
+      if (
+        resp.statusCode === 200 &&
+        this.selectedIds.length === 0
+      ) {
+        let data: FiltersResponse =
+          JSON.parse(resp.data) as FiltersResponse
+
+        this.filterGroups =
+          this.buildFilterGroups(data, localGroups)
       }
     } catch (e) {
     }
-    this.filterGroups = MockData.getFilterGroups(this.categoryId)
+
     this.isLoading = false
   }
 
-  buildFilterGroups(data: FiltersResponse): FilterGroup[] {
+  buildFilterGroups(
+    data: FiltersResponse,
+    localGroups: FilterGroup[]
+  ): FilterGroup[] {
     let groups: FilterGroup[] = []
+
     if (data.brands.length > 0) {
       let brandOptions: FilterOption[] = []
       let i: number = 0
+
       while (i < data.brands.length) {
-        let option: FilterOption = { id: 'brand_' + data.brands[i], label: data.brands[i], selected: false }
-        brandOptions.push(option)
+        brandOptions.push({
+          id: 'brand_remote_' + i.toString(),
+          label: data.brands[i],
+          selected: false
+        })
         i = i + 1
       }
-      let brandGroup: FilterGroup = { name: '品牌', type: 'brand', options: brandOptions }
-      groups.push(brandGroup)
+
+      groups.push({
+        name: '品牌',
+        type: 'brand',
+        options: brandOptions
+      })
+    } else {
+      this.appendLocalGroupByType(groups, localGroups, 'brand')
     }
-    let min: number = data.price_range.min
-    let max: number = data.price_range.max
-    let step: number = Math.max(1, Math.floor((max - min) / 4))
-    let priceOptions: FilterOption[] = []
-    let p: number = min
-    while (p < max) {
-      let next: number = p + step
-      if (next >= max) {
-        next = max
-      }
-      let label: string = p.toString() + '-' + next.toString()
-      let option: FilterOption = { id: 'price_' + label, label: label, selected: false }
-      priceOptions.push(option)
-      p = next
-      if (p >= max) {
-        break
-      }
+
+    let priceGroup: FilterGroup =
+      this.buildRemotePriceGroup(data)
+
+    if (priceGroup.options.length > 0) {
+      groups.push(priceGroup)
+    } else {
+      this.appendLocalGroupByType(groups, localGroups, 'price')
     }
-    let extraOption: FilterOption = { id: 'price_above_' + max.toString(), label: max.toString() + '以上', selected: false }
-    priceOptions.push(extraOption)
-    let priceGroup: FilterGroup = { name: '价格区间', type: 'price', options: priceOptions }
-    groups.push(priceGroup)
+
+    let j: number = 0
+
+    while (j < localGroups.length) {
+      if (
+        localGroups[j].type !== 'brand' &&
+        localGroups[j].type !== 'price'
+      ) {
+        groups.push(localGroups[j])
+      }
+
+      j = j + 1
+    }
+
     return groups
   }
 
-  isSelected(optionId: string): boolean {
-    return this.selectedIds.indexOf(optionId) >= 0;
+  buildRemotePriceGroup(
+    data: FiltersResponse
+  ): FilterGroup {
+    let min: number = data.price_range.min
+    let max: number = data.price_range.max
+    let options: FilterOption[] = []
+
+    if (max <= min) {
+      return {
+        name: '价格区间',
+        type: 'price',
+        options: options
+      }
+    }
+
+    let step: number = Math.max(
+      1,
+      Math.floor((max - min) / 4)
+    )
+
+    let current: number = min
+    let index: number = 0
+
+    while (current < max) {
+      let next: number = current + step
+
+      if (next >= max) {
+        next = max
+      }
+
+      options.push({
+        id: 'price_remote_' + index.toString(),
+        label:
+          current.toString() +
+          '-' +
+          next.toString(),
+        selected: false
+      })
+
+      current = next
+      index = index + 1
+
+      if (current >= max) {
+        break
+      }
+    }
+
+    options.push({
+      id: 'price_remote_above',
+      label: max.toString() + '以上',
+      selected: false
+    })
+
+    return {
+      name: '价格区间',
+      type: 'price',
+      options: options
+    }
+  }
+
+  appendLocalGroupByType(
+    target: FilterGroup[],
+    source: FilterGroup[],
+    groupType: string
+  ): void {
+    let i: number = 0
+
+    while (i < source.length) {
+      if (source[i].type === groupType) {
+        target.push(source[i])
+        return
+      }
+
+      i = i + 1
+    }
   }
 
   toggleOption(optionId: string): void {
-    let newIds: string[] = [];
-    let found: boolean = false;
-    let i: number = 0;
+    let currentGroup: FilterGroup | undefined =
+      this.findGroupByOptionId(optionId)
+
+    let newIds: string[] = []
+    let found: boolean = false
+    let i: number = 0
+
     while (i < this.selectedIds.length) {
-      if (this.selectedIds[i] === optionId) {
-        found = true;
+      let currentId: string = this.selectedIds[i]
+
+      if (currentId === optionId) {
+        found = true
+      } else if (
+        currentGroup !== undefined &&
+        currentGroup.type === 'price' &&
+        this.isOptionInGroup(currentId, currentGroup)
+      ) {
       } else {
-        newIds.push(this.selectedIds[i]);
+        newIds.push(currentId)
       }
-      i = i + 1;
+
+      i = i + 1
     }
+
     if (!found) {
-      newIds.push(optionId);
+      newIds.push(optionId)
     }
-    this.selectedIds = newIds;
+
+    this.selectedIds = newIds
   }
 
-  getOptionDisplayLabel(group: FilterGroup, option: FilterOption): string {
-    if (group.type === 'price') {
-      return '\u00A5' + option.label;
-    }
-    return option.label;
-  }
+  isOptionInGroup(
+    optionId: string,
+    group: FilterGroup
+  ): boolean {
+    let i: number = 0
 
-  @Builder
-  buildChip(option: FilterOption): void {
-    Text(this.getOptionDisplayLabel(this.getCurrentGroup(option), option))
-      .fontSize(14)
-      .fontColor(this.isSelected(option.id) ? '#FFFFFF' : '#3C3C3C')
-      .padding({ left: 16, right: 16, top: 8, bottom: 8 })
-      .backgroundColor(this.isSelected(option.id) ? '#007AFF' : '#F2F2F7')
-      .borderRadius(20)
-      .margin({ right: 10, bottom: 10 })
-      .onClick(() => {
-        this.toggleOption(option.id);
-      })
-  }
-
-  getCurrentGroup(option: FilterOption): FilterGroup {
-    let i: number = 0;
-    while (i < this.filterGroups.length) {
-      let group: FilterGroup = this.filterGroups[i];
-      let j: number = 0;
-      while (j < group.options.length) {
-        if (group.options[j].id === option.id) {
-          return group;
-        }
-        j = j + 1;
+    while (i < group.options.length) {
+      if (group.options[i].id === optionId) {
+        return true
       }
-      i = i + 1;
+
+      i = i + 1
     }
-    return this.filterGroups[0];
+
+    return false
+  }
+
+  findGroupByOptionId(
+    optionId: string
+  ): FilterGroup | undefined {
+    let i: number = 0
+
+    while (i < this.filterGroups.length) {
+      let group: FilterGroup = this.filterGroups[i]
+      let j: number = 0
+
+      while (j < group.options.length) {
+        if (group.options[j].id === optionId) {
+          return group
+        }
+
+        j = j + 1
+      }
+
+      i = i + 1
+    }
+
+    return undefined
   }
 
   resetFilters(): void {
-    this.selectedIds = [];
+    this.selectedIds = []
   }
 
   confirmFilters(): void {
-    let selectedBrands: string = '';
-    let selectedPriceLabel: string = '';
-    let selectedOtherLabels: string = '';
-    let i: number = 0;
+    let selectedBrands: string = ''
+    let selectedPriceLabel: string = ''
+    let selectedOtherLabels: string = ''
+    let i: number = 0
+
     while (i < this.selectedIds.length) {
-      let option: FilterOption | undefined = this.findOptionById(this.selectedIds[i]);
+      let option: FilterOption | undefined =
+        this.findOptionById(this.selectedIds[i])
+
       if (option !== undefined) {
-        let group: FilterGroup = this.getCurrentGroup(option);
-        if (group.type === 'brand') {
-          if (selectedBrands.length > 0) {
-            selectedBrands = selectedBrands + ',' + option.label;
+        let group: FilterGroup | undefined =
+          this.findGroupByOptionId(option.id)
+
+        if (group !== undefined) {
+          if (group.type === 'brand') {
+            selectedBrands =
+              this.appendCommaValue(
+                selectedBrands,
+                option.label
+              )
+          } else if (group.type === 'price') {
+            selectedPriceLabel = option.label
           } else {
-            selectedBrands = option.label;
-          }
-        } else if (group.type === 'price') {
-          selectedPriceLabel = option.label;
-        } else {
-          if (selectedOtherLabels.length > 0) {
-            selectedOtherLabels = selectedOtherLabels + ',' + option.label;
-          } else {
-            selectedOtherLabels = option.label;
+            selectedOtherLabels =
+              this.appendCommaValue(
+                selectedOtherLabels,
+                option.label
+              )
           }
         }
       }
-      i = i + 1;
+
+      i = i + 1
     }
-    NavParams.categoryId = this.categoryId;
-    NavParams.categoryName = this.categoryName;
-    NavParams.selectedBrands = selectedBrands;
-    NavParams.selectedPriceLabel = selectedPriceLabel;
-    NavParams.selectedOtherLabels = selectedOtherLabels;
+
+    NavParams.categoryId = this.categoryId
+    NavParams.categoryName = this.categoryName
+    NavParams.selectedBrands = selectedBrands
+    NavParams.selectedPriceLabel = selectedPriceLabel
+    NavParams.selectedOtherLabels = selectedOtherLabels
+
     router.pushUrl({
       url: 'pages/CompareResultPage'
-    });
+    })
   }
 
-  findOptionById(id: string): FilterOption | undefined {
-    let i: number = 0;
+  appendCommaValue(
+    source: string,
+    value: string
+  ): string {
+    if (source.length === 0) {
+      return value
+    }
+
+    return source + ',' + value
+  }
+
+  findOptionById(
+    id: string
+  ): FilterOption | undefined {
+    let i: number = 0
+
     while (i < this.filterGroups.length) {
-      let group: FilterGroup = this.filterGroups[i];
-      let j: number = 0;
+      let group: FilterGroup = this.filterGroups[i]
+      let j: number = 0
+
       while (j < group.options.length) {
         if (group.options[j].id === id) {
-          return group.options[j];
+          return group.options[j]
         }
-        j = j + 1;
+
+        j = j + 1
       }
-      i = i + 1;
+
+      i = i + 1
     }
-    return undefined;
+
+    return undefined
   }
 
-  getSelectedCount(): number {
-    return this.selectedIds.length;
+  getMatchedProductCount(): number {
+    let products: Product[] = MockData.getProducts()
+    let count: number = 0
+    let i: number = 0
+
+    while (i < products.length) {
+      let product: Product = products[i]
+
+      if (
+        product.category === this.categoryName &&
+        this.matchesSelectedBrand(product) &&
+        this.matchesSelectedPrice(product.lowestPrice)
+      ) {
+        count = count + 1
+      }
+
+      i = i + 1
+    }
+
+    return count
+  }
+
+  matchesSelectedBrand(
+    product: Product
+  ): boolean {
+    let selectedBrands: string[] =
+      this.getSelectedLabelsByType('brand')
+
+    if (selectedBrands.length === 0) {
+      return true
+    }
+
+    return selectedBrands.indexOf(product.brand) >= 0
+  }
+
+  matchesSelectedPrice(
+    price: number
+  ): boolean {
+    let priceLabels: string[] =
+      this.getSelectedLabelsByType('price')
+
+    if (priceLabels.length === 0) {
+      return true
+    }
+
+    return this.matchesPriceLabel(
+      price,
+      priceLabels[0]
+    )
+  }
+
+  getSelectedLabelsByType(
+    groupType: string
+  ): string[] {
+    let labels: string[] = []
+    let i: number = 0
+
+    while (i < this.selectedIds.length) {
+      let option: FilterOption | undefined =
+        this.findOptionById(this.selectedIds[i])
+
+      if (option !== undefined) {
+        let group: FilterGroup | undefined =
+          this.findGroupByOptionId(option.id)
+
+        if (
+          group !== undefined &&
+          group.type === groupType
+        ) {
+          labels.push(option.label)
+        }
+      }
+
+      i = i + 1
+    }
+
+    return labels
+  }
+
+  matchesPriceLabel(
+    price: number,
+    label: string
+  ): boolean {
+    let belowIndex: number = label.indexOf('以下')
+
+    if (belowIndex >= 0) {
+      return price <= Number(
+        label.substring(0, belowIndex)
+      )
+    }
+
+    let aboveIndex: number = label.indexOf('以上')
+
+    if (aboveIndex >= 0) {
+      return price >= Number(
+        label.substring(0, aboveIndex)
+      )
+    }
+
+    let dashIndex: number = label.indexOf('-')
+
+    if (dashIndex >= 0) {
+      let minValue: number = Number(
+        label.substring(0, dashIndex)
+      )
+
+      let maxValue: number = Number(
+        label.substring(dashIndex + 1)
+      )
+
+      return (
+        price >= minValue &&
+        price <= maxValue
+      )
+    }
+
+    return true
   }
 
   build() {
     Column() {
       Row() {
-        Text('\u2190')
-          .fontSize(24)
-          .fontColor('#1C1C1E')
-          .padding({ right: 12 })
-          .onClick(() => {
-            router.back();
-          })
+        Column() {
+          Image($r('app.media.filter_back'))
+            .width(22)
+            .height(22)
+            .objectFit(ImageFit.Contain)
+        }
+        .width(40)
+        .height(44)
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+        .onClick(() => {
+          router.back()
+        })
+
         Text(this.categoryName)
           .fontSize(20)
-          .fontWeight(700)
+          .fontWeight(FontWeight.Bold)
           .fontColor('#1C1C1E')
           .layoutWeight(1)
+
+        if (this.isLoading) {
+          Text('更新中')
+            .fontSize(11)
+            .fontColor('#5267E8')
+            .padding({
+              left: 9,
+              right: 9,
+              top: 5,
+              bottom: 5
+            })
+            .backgroundColor('#EEF1FF')
+            .borderRadius(8)
+        }
       }
       .width('100%')
-      .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-      .backgroundColor('#FFFFFF')
+      .height(64)
+      .padding({
+        left: 8,
+        right: 16
+      })
+      .alignItems(VerticalAlign.Center)
+      .backgroundColor(Color.White)
 
-      Scroll() {
-        Column() {
-          ForEach(this.filterGroups, (group: FilterGroup, groupIndex: number) => {
-            Column() {
-              Text(group.name)
-                .fontSize(18)
-                .fontWeight(600)
-                .fontColor('#1C1C1E')
-                .padding({ left: 16, top: 20, bottom: 8 })
-                .width('100%')
-
-              Flex({ wrap: FlexWrap.Wrap }) {
-                ForEach(group.options, (option: FilterOption, optionIndex: number) => {
-                  this.buildChip(option)
-                })
-              }
-              .padding({ left: 16, right: 16 })
-              .width('100%')
-            }
+      List({ space: 12 }) {
+        ListItem() {
+          Text('筛选条件')
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#1C1C1E')
             .width('100%')
-          })
+            .padding({
+              left: 2,
+              bottom: 2
+            })
         }
-        .width('100%')
-        .padding({ bottom: 80 })
+
+        ForEach(
+          this.filterGroups,
+          (
+            group: FilterGroup,
+            groupIndex: number
+          ) => {
+            ListItem() {
+              FilterGroupCard({
+                group: group,
+                selectedIds: this.selectedIds,
+                onFilterOptionAction: (
+                  optionId: string
+                ): void => {
+                  this.toggleOption(optionId)
+                }
+              })
+            }
+          },
+          (
+            group: FilterGroup,
+            groupIndex: number
+          ) => group.type + groupIndex.toString()
+        )
       }
       .width('100%')
       .layoutWeight(1)
-      .backgroundColor('#F2F2F7')
+      .padding({
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: 18
+      })
+      .backgroundColor('#F5F6F8')
       .scrollBar(BarState.Off)
 
-      Row() {
+      Row({ space: 12 }) {
         Button('重置')
-          .fontSize(16)
-          .fontColor('#007AFF')
-          .backgroundColor('#FFFFFF')
-          .borderRadius(24)
-          .borderWidth(1)
-          .borderColor('#007AFF')
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#5267E8')
+          .backgroundColor(Color.White)
+          .borderRadius(14)
+          .border({
+            width: 1,
+            color: '#5267E8'
+          })
           .width(100)
-          .height(44)
+          .height(48)
           .onClick(() => {
-            this.resetFilters();
+            this.resetFilters()
           })
 
-        Blank().width(12)
-
-        Button('确认筛选' + '(' + this.getSelectedCount().toString() + ')')
-          .fontSize(16)
-          .fontColor('#FFFFFF')
-          .backgroundColor('#007AFF')
-          .borderRadius(24)
-          .height(44)
+        Button(
+          '查看 ' +
+          this.getMatchedProductCount().toString() +
+          ' 件商品'
+        )
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Color.White)
+          .backgroundColor('#5267E8')
+          .borderRadius(14)
+          .height(48)
           .layoutWeight(1)
           .onClick(() => {
-            this.confirmFilters();
+            this.confirmFilters()
           })
       }
       .width('100%')
-      .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-      .backgroundColor('#FFFFFF')
-      .height(64)
+      .height(68)
+      .padding({
+        left: 16,
+        right: 16,
+        top: 10,
+        bottom: 10
+      })
+      .backgroundColor(Color.White)
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F2F2F7')
+    .backgroundColor('#F5F6F8')
   }
 }
