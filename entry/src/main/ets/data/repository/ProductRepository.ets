@@ -7,10 +7,20 @@ export interface PriceStats {
   avg: number
 }
 
+export interface ProductFilterParams {
+  category: string
+  brands: string[]
+  minPrice: number
+  maxPrice: number
+  sort: string
+}
+
 export interface ProductRepository {
   getProducts(): Product[]
   getProductById(id: string): Product | undefined
   loadProductDetail(id: string): Promise<Product | undefined>
+  loadFilteredProducts(params: ProductFilterParams): Promise<Product[]>
+  getFilteredProductCount(params: ProductFilterParams): Promise<number>
   getCategories(): Category[]
   getCategoryPriceStats(category: string): PriceStats
   getBrandReputation(brand: string): number
@@ -35,6 +45,28 @@ export class MockProductRepository implements ProductRepository {
 
   async loadProductDetail(id: string): Promise<Product | undefined> {
     return this.getProductById(id)
+  }
+
+  async loadFilteredProducts(params: ProductFilterParams): Promise<Product[]> {
+    let all: Product[] = MockData.getProducts()
+    let filtered: Product[] = []
+    let i: number = 0
+
+    while (i < all.length) {
+      let product: Product = all[i]
+      if (this.matchesFilter(product, params)) {
+        filtered.push(product)
+      }
+      i = i + 1
+    }
+
+    this.sortProducts(filtered, params.sort)
+    return filtered
+  }
+
+  async getFilteredProductCount(params: ProductFilterParams): Promise<number> {
+    let products: Product[] = await this.loadFilteredProducts(params)
+    return products.length
   }
 
   getCategories(): Category[] {
@@ -111,5 +143,70 @@ export class MockProductRepository implements ProductRepository {
       return 76
     }
     return 70
+  }
+
+  private matchesFilter(product: Product, params: ProductFilterParams): boolean {
+    if (
+      params.category.length > 0 &&
+      product.category !== params.category
+    ) {
+      return false
+    }
+
+    if (
+      params.brands.length > 0 &&
+      params.brands.indexOf(product.brand) < 0
+    ) {
+      return false
+    }
+
+    if (
+      params.minPrice > 0 &&
+      product.lowestPrice < params.minPrice
+    ) {
+      return false
+    }
+
+    if (
+      params.maxPrice > 0 &&
+      product.lowestPrice > params.maxPrice
+    ) {
+      return false
+    }
+
+    return true
+  }
+
+  private sortProducts(products: Product[], sort: string): void {
+    if (sort === 'price_low') {
+      products.sort((a: Product, b: Product): number => {
+        return a.lowestPrice - b.lowestPrice
+      })
+      return
+    }
+
+    if (sort === 'rating') {
+      products.sort((a: Product, b: Product): number => {
+        return b.aggregateRating - a.aggregateRating
+      })
+      return
+    }
+
+    if (sort === 'newest') {
+      products.sort((a: Product, b: Product): number => {
+        if (a.publishDate < b.publishDate) {
+          return 1
+        }
+        if (a.publishDate > b.publishDate) {
+          return -1
+        }
+        return 0
+      })
+      return
+    }
+
+    products.sort((a: Product, b: Product): number => {
+      return b.aggregateScore - a.aggregateScore
+    })
   }
 }

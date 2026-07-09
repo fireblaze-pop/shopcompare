@@ -28,8 +28,16 @@ function emptyProduct(): Product {
 @Component
 export struct FilterResultCard {
   @Prop product: Product = emptyProduct()
+  @Prop compareMode: boolean = false
+  @Prop isCompareSelected: boolean = false
 
   onProductAction: (
+    product: Product
+  ) => void = (
+    product: Product
+  ): void => {}
+
+  onCompareAction: (
     product: Product
   ) => void = (
     product: Product
@@ -53,20 +61,56 @@ export struct FilterResultCard {
       .width(92)
       .height(100)
       .borderRadius(14)
-      .backgroundColor('#F7F8FA')
+      .backgroundColor(
+        this.isCompareSelected ?
+        '#EEF1FF' :
+        '#F7F8FA'
+      )
       .justifyContent(FlexAlign.Center)
       .alignItems(HorizontalAlign.Center)
 
       Column() {
-        Text(this.product.name)
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#1C1C1E')
-          .maxLines(2)
-          .textOverflow({
-            overflow: TextOverflow.Ellipsis
-          })
-          .width('100%')
+        Row() {
+          Text(this.product.name)
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#1C1C1E')
+            .maxLines(2)
+            .textOverflow({
+              overflow: TextOverflow.Ellipsis
+            })
+            .layoutWeight(1)
+
+          if (this.compareMode) {
+            Text(
+              this.isCompareSelected ?
+              '已选' :
+              '加入对比'
+            )
+              .fontSize(11)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(
+                this.isCompareSelected ?
+                Color.White :
+                '#5267E8'
+              )
+              .padding({
+                left: 9,
+                right: 9,
+                top: 5,
+                bottom: 5
+              })
+              .backgroundColor(
+                this.isCompareSelected ?
+                '#5267E8' :
+                '#EEF1FF'
+              )
+              .borderRadius(9)
+              .margin({ left: 8 })
+          }
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Top)
 
         Text(
           this.product.brand +
@@ -149,14 +193,25 @@ export struct FilterResultCard {
     }
     .width('100%')
     .padding(14)
-    .backgroundColor(Color.White)
+    .backgroundColor(
+      this.isCompareSelected ?
+      '#FBFCFF' :
+      Color.White
+    )
     .borderRadius(16)
     .border({
       width: 1,
-      color: '#ECEEF2'
+      color:
+        this.isCompareSelected ?
+        '#5267E8' :
+        '#ECEEF2'
     })
     .onClick(() => {
-      this.onProductAction(this.product)
+      if (this.compareMode) {
+        this.onCompareAction(this.product)
+      } else {
+        this.onProductAction(this.product)
+      }
     })
   }
 }

@@ -185,7 +185,10 @@ export class NavParams {
   static categoryName: string = '';
   static selectedBrands: string = '';
   static selectedPriceLabel: string = '';
+  static selectedMinPrice: number = 0;
+  static selectedMaxPrice: number = 0;
   static selectedOtherLabels: string = '';
+  static compareProductIds: string = '';
 }
 
 export class PreferenceManager {

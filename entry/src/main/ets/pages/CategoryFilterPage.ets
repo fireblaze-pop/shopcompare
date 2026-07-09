@@ -1,8 +1,7 @@
 import { router } from '@kit.ArkUI'
 import {
   FilterGroup,
-  FilterOption,
-  Product
+  FilterOption
 } from '../models/DataModels'
 import { MockData } from '../data/MockData'
 import { NavParams } from '../utils/PreferenceManager'
@@ -29,6 +28,15 @@ interface FiltersResponse {
   product_count: number
 }
 
+interface PriceBounds {
+  min: number
+  max: number
+}
+
+interface ProductCountResponse {
+  total: number
+}
+
 @Entry
 @Component
 struct CategoryFilterPage {
@@ -37,6 +45,9 @@ struct CategoryFilterPage {
   @State filterGroups: FilterGroup[] = []
   @State selectedIds: string[] = []
   @State isLoading: boolean = false
+  @State matchedProductCount: number = 0
+  @State isCountLoading: boolean = false
+  @State activeCountPath: string = ''
 
   private http: HttpClient = DataProvider.getHttpClient()
 
@@ -50,27 +61,32 @@ struct CategoryFilterPage {
     let localGroups: FilterGroup[] =
       MockData.getFilterGroups(this.categoryId)
 
-    this.filterGroups = localGroups
     this.isLoading = true
+    this.isCountLoading = true
 
     try {
       let resp = await this.http.get(
-        '/filters?category=' + encodeURIComponent(this.categoryName)
+        '/filters?category=' +
+        encodeURIComponent(this.categoryName)
       )
 
-      if (
-        resp.statusCode === 200 &&
-        this.selectedIds.length === 0
-      ) {
+      if (resp.statusCode === 200) {
         let data: FiltersResponse = JSON.parse(resp.data)
 
         this.filterGroups =
           this.buildFilterGroups(data, localGroups)
+        this.matchedProductCount = data.product_count
+        this.isCountLoading = false
+        this.isLoading = false
+        return
       }
     } catch (e) {
     }
 
+    this.filterGroups =
+      this.getSupportedLocalGroups(localGroups)
     this.isLoading = false
+    await this.refreshMatchedProductCount()
   }
 
   buildFilterGroups(
@@ -110,19 +126,15 @@ struct CategoryFilterPage {
       this.appendLocalGroupByType(groups, localGroups, 'price')
     }
 
-    let j: number = 0
+    return groups
+  }
 
-    while (j < localGroups.length) {
-      if (
-        localGroups[j].type !== 'brand' &&
-        localGroups[j].type !== 'price'
-      ) {
-        groups.push(localGroups[j])
-      }
-
-      j = j + 1
-    }
-
+  getSupportedLocalGroups(
+    localGroups: FilterGroup[]
+  ): FilterGroup[] {
+    let groups: FilterGroup[] = []
+    this.appendLocalGroupByType(groups, localGroups, 'brand')
+    this.appendLocalGroupByType(groups, localGroups, 'price')
     return groups
   }
 
@@ -203,6 +215,7 @@ struct CategoryFilterPage {
     }
 
     this.selectedIds = newIds
+    this.refreshMatchedProductCountByIds(newIds)
   }
 
   isOptionInGroup(
@@ -246,7 +259,9 @@ struct CategoryFilterPage {
   }
 
   resetFilters(): void {
-    this.selectedIds = []
+    let emptyIds: string[] = []
+    this.selectedIds = emptyIds
+    this.refreshMatchedProductCountByIds(emptyIds)
   }
 
   confirmFilters(): void {
@@ -285,11 +300,17 @@ struct CategoryFilterPage {
       i = i + 1
     }
 
+    let priceBounds: PriceBounds =
+      this.getPriceBoundsByLabel(selectedPriceLabel)
+
     NavParams.categoryId = this.categoryId
     NavParams.categoryName = this.categoryName
     NavParams.selectedBrands = selectedBrands
     NavParams.selectedPriceLabel = selectedPriceLabel
+    NavParams.selectedMinPrice = priceBounds.min
+    NavParams.selectedMaxPrice = priceBounds.max
     NavParams.selectedOtherLabels = selectedOtherLabels
+    NavParams.compareProductIds = ''
 
     router.pushUrl({
       url: 'pages/CompareResultPage'
@@ -330,66 +351,159 @@ struct CategoryFilterPage {
     return undefined
   }
 
-  getMatchedProductCount(): number {
-    let products: Product[] = DataProvider.getProductRepository().getProducts()
-    let count: number = 0
-    let i: number = 0
+  async refreshMatchedProductCount(): Promise<void> {
+    let selectedIdsSnapshot: string[] =
+      this.copyStringArray(this.selectedIds)
 
-    while (i < products.length) {
-      let product: Product = products[i]
-
-      if (
-        product.category === this.categoryName &&
-        this.matchesSelectedBrand(product) &&
-        this.matchesSelectedPrice(product.lowestPrice)
-      ) {
-        count = count + 1
-      }
-
-      i = i + 1
-    }
-
-    return count
-  }
-
-  matchesSelectedBrand(
-    product: Product
-  ): boolean {
-    let selectedBrands: string[] =
-      this.getSelectedLabelsByType('brand')
-
-    if (selectedBrands.length === 0) {
-      return true
-    }
-
-    return selectedBrands.indexOf(product.brand) >= 0
-  }
-
-  matchesSelectedPrice(
-    price: number
-  ): boolean {
-    let priceLabels: string[] =
-      this.getSelectedLabelsByType('price')
-
-    if (priceLabels.length === 0) {
-      return true
-    }
-
-    return this.matchesPriceLabel(
-      price,
-      priceLabels[0]
+    await this.refreshMatchedProductCountByIds(
+      selectedIdsSnapshot
     )
+  }
+
+  async refreshMatchedProductCountByIds(
+    selectedIds: string[]
+  ): Promise<void> {
+    let path: string =
+      this.buildCountPathBySelectedIds(selectedIds)
+
+    this.activeCountPath = path
+    this.isCountLoading = true
+
+    let response = await this.http.get(path)
+
+    if (path !== this.activeCountPath) {
+      return
+    }
+
+    if (response.statusCode === 200) {
+      let data: ProductCountResponse =
+        JSON.parse(response.data)
+
+      this.matchedProductCount = data.total
+    } else {
+      this.matchedProductCount = 0
+    }
+
+    this.isCountLoading = false
+  }
+
+  buildCountPathBySelectedIds(
+    selectedIds: string[]
+  ): string {
+    let path: string = '/products?page=1&size=1'
+
+    if (this.categoryName.length > 0) {
+      path = path +
+        '&category=' +
+        encodeURIComponent(this.categoryName)
+    }
+
+    let brands: string[] =
+      this.getSelectedLabelsByTypeFromIds(
+        selectedIds,
+        'brand'
+      )
+
+    if (brands.length > 0) {
+      path = path +
+        '&brand=' +
+        encodeURIComponent(brands.join(','))
+    }
+
+    let priceBounds: PriceBounds =
+      this.getSelectedPriceBoundsFromIds(selectedIds)
+
+    if (priceBounds.min > 0) {
+      path = path +
+        '&min_price=' +
+        priceBounds.min.toString()
+    }
+
+    if (priceBounds.max > 0) {
+      path = path +
+        '&max_price=' +
+        priceBounds.max.toString()
+    }
+
+    path = path + '&sort=recommend'
+    return path
+  }
+
+  getSelectedPriceBounds(): PriceBounds {
+    return this.getSelectedPriceBoundsFromIds(
+      this.selectedIds
+    )
+  }
+
+  getSelectedPriceBoundsFromIds(
+    selectedIds: string[]
+  ): PriceBounds {
+    let labels: string[] =
+      this.getSelectedLabelsByTypeFromIds(
+        selectedIds,
+        'price'
+      )
+
+    if (labels.length === 0) {
+      return { min: 0, max: 0 }
+    }
+
+    return this.getPriceBoundsByLabel(labels[0])
+  }
+
+  getPriceBoundsByLabel(
+    label: string
+  ): PriceBounds {
+    if (label.length === 0) {
+      return { min: 0, max: 0 }
+    }
+
+    let belowIndex: number = label.indexOf('以下')
+    if (belowIndex >= 0) {
+      return {
+        min: 0,
+        max: Number(label.substring(0, belowIndex))
+      }
+    }
+
+    let aboveIndex: number = label.indexOf('以上')
+    if (aboveIndex >= 0) {
+      return {
+        min: Number(label.substring(0, aboveIndex)),
+        max: 0
+      }
+    }
+
+    let dashIndex: number = label.indexOf('-')
+    if (dashIndex >= 0) {
+      return {
+        min: Number(label.substring(0, dashIndex)),
+        max: Number(label.substring(dashIndex + 1))
+      }
+    }
+
+    return { min: 0, max: 0 }
   }
 
   getSelectedLabelsByType(
     groupType: string
   ): string[] {
+    return this.getSelectedLabelsByTypeFromIds(
+      this.selectedIds,
+      groupType
+    )
+  }
+
+  getSelectedLabelsByTypeFromIds(
+    selectedIds: string[],
+    groupType: string
+  ): string[] {
     let labels: string[] = []
     let i: number = 0
 
-    while (i < this.selectedIds.length) {
+    while (i < selectedIds.length) {
       let option: FilterOption | undefined =
-        this.findOptionById(this.selectedIds[i])
+        this.findOptionById(selectedIds[i])
 
       if (option !== undefined) {
         let group: FilterGroup | undefined =
@@ -407,6 +521,18 @@ struct CategoryFilterPage {
     }
 
     return labels
+  }
+
+  copyStringArray(source: string[]): string[] {
+    let result: string[] = []
+    let i: number = 0
+
+    while (i < source.length) {
+      result.push(source[i])
+      i = i + 1
+    }
+
+    return result
   }
 
   matchesPriceLabel(
@@ -561,8 +687,10 @@ struct CategoryFilterPage {
           })
 
         Button(
+          this.isCountLoading ?
+          '正在计算...' :
           '查看 ' +
-          this.getMatchedProductCount().toString() +
+          this.matchedProductCount.toString() +
           ' 件商品'
         )
           .fontSize(15)
@@ -572,6 +700,8 @@ struct CategoryFilterPage {
           .borderRadius(14)
           .height(48)
           .layoutWeight(1)
+          .enabled(!this.isCountLoading)
+          .opacity(this.isCountLoading ? 0.72 : 1)
           .onClick(() => {
             this.confirmFilters()
           })

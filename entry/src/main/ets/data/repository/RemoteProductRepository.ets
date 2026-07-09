@@ -1,5 +1,5 @@
 import { Product, Category, ProductSpec, PricePoint, ReviewTag, SubCategory, PlatformListing } from '../../models/DataModels'
-import { ProductRepository, PriceStats } from './ProductRepository'
+import { ProductRepository, PriceStats, ProductFilterParams } from './ProductRepository'
 import { HttpClient } from '../../utils/HttpClient'
 
 interface ProductJson {
@@ -277,9 +277,130 @@ export class RemoteProductRepository implements ProductRepository {
       if (!found) {
         this.detailCache.push(product)
       }
+      this.mergeProductCache([product])
       return product
     }
     return undefined
+  }
+
+  async loadFilteredProducts(params: ProductFilterParams): Promise<Product[]> {
+    let allProducts: Product[] = []
+    let page: number = 1
+    let total: number = 0
+    let keepLoading: boolean = true
+
+    while (keepLoading) {
+      let path: string = this.buildFilterPath(params, page, 100)
+      let response = await this.client.get(path)
+
+      if (response.statusCode !== 200) {
+        return []
+      }
+
+      let data: ProductListJson = JSON.parse(response.data)
+      total = data.total
+
+      let pageProducts: Product[] = []
+      let i: number = 0
+      while (i < data.items.length) {
+        let product: Product = jsonToProduct(data.items[i])
+        pageProducts.push(product)
+        allProducts.push(product)
+        i = i + 1
+      }
+
+      this.mergeProductCache(pageProducts)
+
+      if (
+        data.items.length === 0 ||
+        allProducts.length >= total
+      ) {
+        keepLoading = false
+      } else {
+        page = page + 1
+      }
+    }
+
+    return allProducts
+  }
+
+  async getFilteredProductCount(params: ProductFilterParams): Promise<number> {
+    let path: string = this.buildFilterPath(params, 1, 1)
+    let response = await this.client.get(path)
+
+    if (response.statusCode !== 200) {
+      return 0
+    }
+
+    let data: ProductListJson = JSON.parse(response.data)
+    return data.total
+  }
+
+  private buildFilterPath(
+    params: ProductFilterParams,
+    page: number,
+    size: number
+  ): string {
+    let path: string =
+      '/products?page=' + page.toString() +
+      '&size=' + size.toString()
+
+    if (params.category.length > 0) {
+      path = path +
+        '&category=' +
+        encodeURIComponent(params.category)
+    }
+
+    if (params.brands.length > 0) {
+      path = path +
+        '&brand=' +
+        encodeURIComponent(params.brands.join(','))
+    }
+
+    if (params.minPrice > 0) {
+      path = path +
+        '&min_price=' +
+        params.minPrice.toString()
+    }
+
+    if (params.maxPrice > 0) {
+      path = path +
+        '&max_price=' +
+        params.maxPrice.toString()
+    }
+
+    if (params.sort.length > 0) {
+      path = path +
+        '&sort=' +
+        encodeURIComponent(params.sort)
+    }
+
+    return path
+  }
+
+  private mergeProductCache(products: Product[]): void {
+    let i: number = 0
+
+    while (i < products.length) {
+      let product: Product = products[i]
+      let found: boolean = false
+      let j: number = 0
+
+      while (j < this.productCache.length) {
+        if (this.productCache[j].id === product.id) {
+          this.productCache[j] = product
+          found = true
+          break
+        }
+        j = j + 1
+      }
+
+      if (!found) {
+        this.productCache.push(product)
+      }
+
+      i = i + 1
+    }
   }
 
   getProducts(): Product[] {
