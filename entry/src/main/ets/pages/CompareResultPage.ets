@@ -60,6 +60,22 @@ struct CompareResultPage {
       let product: Product = allProducts[i]
 
       if (
+        this.categoryName.length > 0 &&
+        product.category !== this.categoryName
+      ) {
+        i = i + 1
+        continue
+      }
+
+      if (
+        this.selectedBrands.length > 0 &&
+        !this.matchesBrand(product.brand)
+      ) {
+        i = i + 1
+        continue
+      }
+
+      if (
         this.selectedPriceLabel.length > 0 &&
         !this.matchesPriceRange(product.lowestPrice)
       ) {
