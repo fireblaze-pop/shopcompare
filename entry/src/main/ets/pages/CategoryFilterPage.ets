@@ -59,6 +59,7 @@ struct CategoryFilterPage {
     NavParams.selectedOtherLabels = ''
     NavParams.filterSelection = this.createEmptySelection()
     this.selectedIds = []
+    DataProvider.getProductRepository().clearFilter()
     this.loadFilters()
   }
 

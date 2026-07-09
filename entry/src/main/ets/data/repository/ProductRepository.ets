@@ -187,4 +187,8 @@ export class MockProductRepository implements ProductRepository {
 
     this.filteredCache = filtered
   }
+
+  clearFilter(): void {
+    this.filteredCache = []
+  }
 }
