@@ -17,6 +17,7 @@ export interface ProductRepository {
   loadCategories(): Promise<void>
   loadProductDetail(id: string): Promise<Product | undefined>
   loadFilteredProducts(category: string, brands: string, sort: string): Promise<void>
+  clearFilter(): void
 }
 
 export class MockProductRepository implements ProductRepository {
@@ -179,5 +180,9 @@ export class MockProductRepository implements ProductRepository {
     }
 
     this.filteredCache = filtered
+  }
+
+  clearFilter(): void {
+    this.filteredCache = []
   }
 }

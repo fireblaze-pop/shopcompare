@@ -47,6 +47,7 @@ struct CategoryFilterPage {
     NavParams.selectedPriceLabel = ''
     NavParams.selectedOtherLabels = ''
     this.selectedIds = []
+    DataProvider.getProductRepository().clearFilter()
     this.loadFilters()
   }
 

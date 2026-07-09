@@ -313,4 +313,8 @@ export class RemoteProductRepository implements ProductRepository {
   getBrandReputation(brand: string): number {
     return 70
   }
+
+  clearFilter(): void {
+    this.loadProducts()
+  }
 }
