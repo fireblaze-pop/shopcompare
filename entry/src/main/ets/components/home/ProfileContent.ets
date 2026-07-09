@@ -415,13 +415,6 @@ export struct ProfileContent {
   private logout(): void {
     PreferenceManager.setDarkMode(false)
     PreferenceManager.setNotificationEnabled(true)
-    PreferenceManager.saveUserProfile({
-      preferences: [],
-      dimensions: [],
-      budget: '',
-      platforms: [],
-      isFirstLaunch: true
-    })
 
     BehaviorManager.getInstance().clearActions()
 

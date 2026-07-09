@@ -6,7 +6,19 @@ import { DataProvider } from '../data/DataProvider'
 
 interface LoginResp {
   access_token: string
+  refresh_token: string
+  token_type: string
   user_id: number
+}
+
+interface SendCodeResp {
+  phone: string
+  code: string
+  message: string
+}
+
+interface ApiErrorResp {
+  detail: string
 }
 
 @Entry
@@ -17,20 +29,67 @@ struct LoginPage {
   @State code: string = ''
   @State isPasswordMode: boolean = true
   @State isLoading: boolean = false
+  @State isSendingCode: boolean = false
   @State countdown: number = 0
-  @State canSendCode: boolean = false
+  @State devCodeHint: string = ''
 
   private timerId: number = -1
   private http: HttpClient = DataProvider.getHttpClient()
 
   aboutToDisappear(): void {
+    this.stopCountdown()
+  }
+
+  stopCountdown(): void {
     if (this.timerId !== -1) {
       clearInterval(this.timerId)
       this.timerId = -1
     }
   }
 
-  sendCode(): void {
+  startCountdown(): void {
+    this.stopCountdown()
+    this.countdown = 60
+
+    this.timerId = setInterval(() => {
+      this.countdown = this.countdown - 1
+
+      if (this.countdown <= 0) {
+        this.countdown = 0
+        this.stopCountdown()
+      }
+    }, 1000)
+  }
+
+  canRequestCode(): boolean {
+    return this.phone.length === 11 &&
+      this.countdown === 0 &&
+      !this.isSendingCode &&
+      !this.isLoading
+  }
+
+  parseErrorMessage(
+    data: string,
+    fallback: string
+  ): string {
+    try {
+      let errorData: ApiErrorResp =
+        JSON.parse(data) as ApiErrorResp
+
+      if (
+        errorData.detail !== undefined &&
+        errorData.detail !== null &&
+        errorData.detail.length > 0
+      ) {
+        return errorData.detail
+      }
+    } catch (e) {
+    }
+
+    return fallback
+  }
+
+  async sendCode(): Promise<void> {
     if (this.phone.length !== 11) {
       promptAction.showToast({
         message: '请输入正确的手机号'
@@ -38,19 +97,63 @@ struct LoginPage {
       return
     }
 
-    this.countdown = 60
-    this.canSendCode = false
+    if (!this.canRequestCode()) {
+      return
+    }
 
-    this.timerId = setInterval(() => {
-      this.countdown = this.countdown - 1
+    this.isSendingCode = true
+    this.devCodeHint = ''
 
-      if (this.countdown <= 0) {
-        clearInterval(this.timerId)
-        this.timerId = -1
-        this.countdown = 0
-        this.canSendCode = true
+    let body: string =
+      '{"phone":"' + this.phone + '"}'
+
+    let resp = await this.http.post(
+      '/auth/send-code',
+      body
+    )
+
+    this.isSendingCode = false
+
+    if (resp.statusCode !== 200) {
+      promptAction.showToast({
+        message: this.parseErrorMessage(
+          resp.data,
+          '验证码发送失败，请稍后重试'
+        )
+      })
+      return
+    }
+
+    let message: string = '验证码已发送'
+
+    try {
+      let result: SendCodeResp =
+        JSON.parse(resp.data) as SendCodeResp
+
+      if (
+        result.message !== undefined &&
+        result.message !== null &&
+        result.message.length > 0
+      ) {
+        message = result.message
       }
-    }, 1000)
+
+      if (
+        result.code !== undefined &&
+        result.code !== null &&
+        result.code.length > 0
+      ) {
+        this.devCodeHint =
+          '开发环境验证码：' + result.code
+      }
+    } catch (e) {
+    }
+
+    this.startCountdown()
+
+    promptAction.showToast({
+      message: message
+    })
   }
 
   async handlePasswordLogin(): Promise<void> {
@@ -61,10 +164,14 @@ struct LoginPage {
       return
     }
 
-    if (this.password.length < 6) {
+    if (this.password.length < 8) {
       promptAction.showToast({
-        message: '密码至少6位'
+        message: '密码至少8位'
       })
+      return
+    }
+
+    if (this.isLoading) {
       return
     }
 
@@ -72,27 +179,29 @@ struct LoginPage {
 
     let body: string =
       '{"phone":"' + this.phone +
-        '","password":"' + this.password + '"}'
+      '","password":"' + this.password +
+      '","login_type":"password"}'
 
-    let resp = await this.http.post('/auth/login', body)
+    let resp = await this.http.post(
+      '/auth/login',
+      body
+    )
 
     this.isLoading = false
 
     if (resp.statusCode === 200) {
-      let result: LoginResp =
-        JSON.parse(resp.data) as LoginResp
-
-      this.http.setToken(result.access_token)
-      PreferenceManager.setCurrentUserId(result.user_id.toString())
-
-      this.navigateAfterLogin()
-    } else {
-      promptAction.showToast({
-        message: '登录失败：手机号或密码错误'
-      })
-
-      this.password = ''
+      this.handleLoginSuccess(resp.data)
+      return
     }
+
+    promptAction.showToast({
+      message: this.parseErrorMessage(
+        resp.data,
+        '登录失败，请检查手机号和密码'
+      )
+    })
+
+    this.password = ''
   }
 
   async handleCodeLogin(): Promise<void> {
@@ -103,10 +212,14 @@ struct LoginPage {
       return
     }
 
-    if (this.code.length < 6) {
+    if (this.code.length !== 6) {
       promptAction.showToast({
         message: '请输入6位验证码'
       })
+      return
+    }
+
+    if (this.isLoading) {
       return
     }
 
@@ -114,27 +227,61 @@ struct LoginPage {
 
     let body: string =
       '{"phone":"' + this.phone +
-        '","code":"' + this.code +
-        '","login_type":"code"}'
+      '","code":"' + this.code +
+      '","login_type":"code"}'
 
-    let resp = await this.http.post('/auth/login', body)
+    let resp = await this.http.post(
+      '/auth/login',
+      body
+    )
 
     this.isLoading = false
 
     if (resp.statusCode === 200) {
+      this.handleLoginSuccess(resp.data)
+      return
+    }
+
+    promptAction.showToast({
+      message: this.parseErrorMessage(
+        resp.data,
+        '验证码错误或已过期'
+      )
+    })
+
+    this.code = ''
+  }
+
+  handleLoginSuccess(data: string): void {
+    try {
       let result: LoginResp =
-        JSON.parse(resp.data) as LoginResp
+        JSON.parse(data) as LoginResp
+
+      if (
+        result.access_token === undefined ||
+        result.access_token === null ||
+        result.access_token.length === 0
+      ) {
+        promptAction.showToast({
+          message: '登录响应缺少访问令牌'
+        })
+        return
+      }
 
       this.http.setToken(result.access_token)
-      PreferenceManager.setCurrentUserId(result.user_id.toString())
+      PreferenceManager.setCurrentUserId(
+        result.user_id.toString()
+      )
 
-      this.navigateAfterLogin()
-    } else {
       promptAction.showToast({
-        message: '验证码错误或已过期'
+        message: '登录成功'
       })
 
-      this.code = ''
+      this.navigateAfterLogin()
+    } catch (e) {
+      promptAction.showToast({
+        message: '登录响应解析失败'
+      })
     }
   }
 
@@ -163,7 +310,6 @@ struct LoginPage {
     Column() {
       Scroll() {
         Column() {
-          // 品牌区域
           Column({ space: 8 }) {
             Column() {
               Text('比')
@@ -174,10 +320,12 @@ struct LoginPage {
             .width(56)
             .height(56)
             .borderRadius(16)
-            .backgroundColor('#1677FF')
+            .backgroundColor('#5267E8')
             .justifyContent(FlexAlign.Center)
             .alignItems(HorizontalAlign.Center)
-            .margin({ bottom: 8 })
+            .margin({
+              bottom: 8
+            })
 
             Text('欢迎使用 ShopCompare')
               .fontSize(25)
@@ -195,7 +343,6 @@ struct LoginPage {
             bottom: 28
           })
 
-          // 登录方式切换
           Column() {
             Row() {
               Row() {
@@ -269,9 +416,7 @@ struct LoginPage {
             bottom: 20
           })
 
-          // 输入区域
           Column({ space: 14 }) {
-            // 手机号
             Row() {
               Text('+86')
                 .fontSize(15)
@@ -307,9 +452,7 @@ struct LoginPage {
                 })
                 .onChange((value: string) => {
                   this.phone = value
-                  this.canSendCode =
-                    value.length === 11 &&
-                      this.countdown === 0
+                  this.devCodeHint = ''
                 })
             }
             .width('100%')
@@ -323,10 +466,9 @@ struct LoginPage {
             .alignItems(VerticalAlign.Center)
 
             if (this.isPasswordMode) {
-              // 密码
               TextInput({
                 text: this.password,
-                placeholder: '请输入密码（6-20位）'
+                placeholder: '请输入密码（至少8位）'
               })
                 .type(InputType.Password)
                 .maxLength(20)
@@ -349,11 +491,10 @@ struct LoginPage {
                   this.password = value
                 })
             } else {
-              // 验证码
               Row() {
                 TextInput({
                   text: this.code,
-                  placeholder: '请输入验证码'
+                  placeholder: '请输入6位验证码'
                 })
                   .type(InputType.Number)
                   .maxLength(6)
@@ -375,22 +516,26 @@ struct LoginPage {
                   })
 
                 Text(
-                  this.countdown > 0 ?
-                    this.countdown.toString() + 's后重试' :
-                    '获取验证码'
+                  this.isSendingCode ?
+                    '发送中...' :
+                    (
+                      this.countdown > 0 ?
+                        this.countdown.toString() + 's后重试' :
+                        '获取验证码'
+                    )
                 )
                   .fontSize(14)
                   .fontWeight(FontWeight.Medium)
                   .fontColor(
-                    this.canSendCode ?
-                      '#1677FF' :
+                    this.canRequestCode() ?
+                      '#5267E8' :
                       '#AEAEB2'
                   )
                   .margin({
                     right: 16
                   })
                   .onClick(() => {
-                    if (this.canSendCode) {
+                    if (this.canRequestCode()) {
                       this.sendCode()
                     }
                   })
@@ -404,6 +549,13 @@ struct LoginPage {
               })
               .borderRadius(14)
               .alignItems(VerticalAlign.Center)
+
+              if (this.devCodeHint.length > 0) {
+                Text(this.devCodeHint)
+                  .fontSize(12)
+                  .fontColor('#5267E8')
+                  .width('100%')
+              }
             }
           }
           .width('100%')
@@ -412,11 +564,14 @@ struct LoginPage {
             right: 24
           })
 
-          // 主登录按钮
           Column() {
             Button(
               this.isLoading ?
-                (this.isPasswordMode ? '登录中...' : '验证中...') :
+                (
+                  this.isPasswordMode ?
+                    '登录中...' :
+                    '验证中...'
+                ) :
                 '登录'
             )
               .fontSize(16)
@@ -424,8 +579,8 @@ struct LoginPage {
               .fontColor(Color.White)
               .backgroundColor(
                 this.isLoading ?
-                  '#AFCBFF' :
-                  '#1677FF'
+                  '#AEB7F2' :
+                  '#5267E8'
               )
               .borderRadius(14)
               .height(50)
@@ -448,7 +603,6 @@ struct LoginPage {
             top: 22
           })
 
-          // 注册入口
           Row({ space: 4 }) {
             Text('还没有账号？')
               .fontSize(14)
@@ -457,7 +611,7 @@ struct LoginPage {
             Text('立即注册')
               .fontSize(14)
               .fontWeight(FontWeight.Medium)
-              .fontColor('#1677FF')
+              .fontColor('#5267E8')
               .onClick(() => {
                 this.goRegister()
               })
@@ -468,7 +622,6 @@ struct LoginPage {
             top: 18
           })
 
-          // 跳过登录
           Text('暂不登录，先逛逛')
             .fontSize(14)
             .fontColor('#62656C')
@@ -485,7 +638,6 @@ struct LoginPage {
               top: 8
             })
 
-          // 隐私政策
           Text('登录即表示同意《隐私政策》')
             .fontSize(12)
             .fontColor('#9A9DA4')
