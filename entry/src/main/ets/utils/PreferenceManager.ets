@@ -1,7 +1,12 @@
-import { UserProfile } from '../models/DataModels'
+import { UserProfile, LocalUserInfo } from '../models/DataModels'
 import { preferences } from '@kit.ArkData'
 
 const PREF_NAME: string = 'shopcompare_data'
+
+interface LocalUserInfoEntry {
+  userId: string
+  info: LocalUserInfo
+}
 
 let dataPreferences: preferences.Preferences | null = null
 
@@ -39,6 +44,7 @@ class PreferenceStore {
   }
   private currentUserId: string = 'u_me'
   private searchHistory: string[] = []
+  private localUserInfos: LocalUserInfoEntry[] = []
 
   async loadFromDisk(): Promise<void> {
     if (dataPreferences === null) {
@@ -68,6 +74,15 @@ class PreferenceStore {
     if (dataPreferences.hasSync('currentUserId')) {
       this.currentUserId = dataPreferences.getSync('currentUserId', 'u_me') as string
     }
+    if (dataPreferences.hasSync('localUserInfos')) {
+      let userInfoJson: string =
+        dataPreferences.getSync(
+          'localUserInfos',
+          '[]'
+        ) as string
+      this.localUserInfos =
+        JSON.parse(userInfoJson) as LocalUserInfoEntry[]
+    }
   }
 
   private saveFavorites(): void {
@@ -76,6 +91,13 @@ class PreferenceStore {
 
   private saveSearchHistory(): void {
     persistString('searchHistory', JSON.stringify(this.searchHistory))
+  }
+
+  private saveLocalUserInfos(): void {
+    persistString(
+      'localUserInfos',
+      JSON.stringify(this.localUserInfos)
+    )
   }
 
   private saveProfile(): void {
@@ -175,6 +197,52 @@ class PreferenceStore {
     this.searchHistory = []
     this.saveSearchHistory()
   }
+
+  private getDefaultLocalUserInfo(): LocalUserInfo {
+    return {
+      nickname: '购物达人',
+      bio: '让每一次比价都更聪明'
+    }
+  }
+
+  getLocalUserInfo(): LocalUserInfo {
+    let i: number = 0
+    while (i < this.localUserInfos.length) {
+      if (this.localUserInfos[i].userId === this.currentUserId) {
+        return {
+          nickname: this.localUserInfos[i].info.nickname,
+          bio: this.localUserInfos[i].info.bio
+        }
+      }
+      i = i + 1
+    }
+    return this.getDefaultLocalUserInfo()
+  }
+
+  saveLocalUserInfo(info: LocalUserInfo): void {
+    let i: number = 0
+    while (i < this.localUserInfos.length) {
+      if (this.localUserInfos[i].userId === this.currentUserId) {
+        this.localUserInfos[i].info = {
+          nickname: info.nickname,
+          bio: info.bio
+        }
+        this.saveLocalUserInfos()
+        return
+      }
+      i = i + 1
+    }
+
+    let entry: LocalUserInfoEntry = {
+      userId: this.currentUserId,
+      info: {
+        nickname: info.nickname,
+        bio: info.bio
+      }
+    }
+    this.localUserInfos.push(entry)
+    this.saveLocalUserInfos()
+  }
 }
 
 let store: PreferenceStore = new PreferenceStore()
@@ -263,5 +331,13 @@ export class PreferenceManager {
 
   static clearSearchHistory(): void {
     store.clearSearchHistory()
+  }
+
+  static loadLocalUserInfo(): LocalUserInfo {
+    return store.getLocalUserInfo()
+  }
+
+  static saveLocalUserInfo(info: LocalUserInfo): void {
+    store.saveLocalUserInfo(info)
   }
 }

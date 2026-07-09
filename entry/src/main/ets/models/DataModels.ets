@@ -77,6 +77,11 @@ export interface UserProfile {
   isFirstLaunch: boolean;
 }
 
+export interface LocalUserInfo {
+  nickname: string;
+  bio: string;
+}
+
 export interface CompareResult {
   products: Product[];
   totalCount: number;
