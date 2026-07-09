@@ -60,12 +60,27 @@ export interface FilterOption {
   id: string;
   label: string;
   selected: boolean;
+  value?: string;
+  minPrice?: number;
+  maxPrice?: number;
 }
 
 export interface FilterGroup {
   name: string;
   type: string;
   options: FilterOption[];
+}
+
+export interface FilterSelection {
+  categoryId: string;
+  categoryName: string;
+  subCategoryId: string;
+  subCategoryName: string;
+  brands: string[];
+  minPrice: number;
+  maxPrice: number;
+  priceLabel: string;
+  sort: string;
 }
 
 export interface UserProfile {
