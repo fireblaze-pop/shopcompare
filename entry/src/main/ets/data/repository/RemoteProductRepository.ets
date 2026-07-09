@@ -1,5 +1,5 @@
 import { Product, Category, ProductSpec, PricePoint, ReviewTag, SubCategory, PlatformListing, FilterSelection } from '../../models/DataModels'
-import { ProductRepository, PriceStats } from './ProductRepository'
+import { ProductRepository, PriceStats, ProductFilterParams } from './ProductRepository'
 import { HttpClient } from '../../utils/HttpClient'
 
 interface ProductJson {
@@ -99,6 +99,7 @@ function jsonToProduct(json: ProductJson): Product {
     aggregateRating: safeNum(json.aggregate_rating),
     totalReviewCount: safeNum(json.total_review_count),
     platformListings: [],
+    platformCount: safeNum(json.platform_count),
     lowestPrice: safeNum(json.lowest_price),
     priceSpread: safeNum(json.price_spread),
     historicalLow: safeNum(json.historical_low),
@@ -114,9 +115,13 @@ function jsonToProductDetail(json: ProductDetailJson): Product {
   let product: Product = jsonToProduct(json)
 
   let listings: PlatformListing[] = []
+  let sourceListings: PlatformListingJson[] = []
+  if (json.platform_listings !== undefined && json.platform_listings !== null) {
+    sourceListings = json.platform_listings
+  }
   let i: number = 0
-  while (i < json.platform_listings.length) {
-    let pl: PlatformListingJson = json.platform_listings[i]
+  while (i < sourceListings.length) {
+    let pl: PlatformListingJson = sourceListings[i]
     listings.push({
       platform: pl.platform,
       price: pl.price,
@@ -128,36 +133,60 @@ function jsonToProductDetail(json: ProductDetailJson): Product {
     i = i + 1
   }
   product.platformListings = listings
+  if (product.platformCount <= 0 && listings.length > 0) {
+    product.platformCount = listings.length
+  }
 
   let history: PricePoint[] = []
+  let sourceHistory: PricePointJson[] = []
+  if (json.price_history !== undefined && json.price_history !== null) {
+    sourceHistory = json.price_history
+  }
   let h: number = 0
-  while (h < json.price_history.length) {
+  while (h < sourceHistory.length) {
     history.push({
-      date: json.price_history[h].date,
-      price: json.price_history[h].price
+      date: safeStr(sourceHistory[h].date),
+      price: safeNum(sourceHistory[h].price)
     })
     h = h + 1
   }
+  history.sort((a: PricePoint, b: PricePoint): number => {
+    if (a.date < b.date) {
+      return -1
+    }
+    if (a.date > b.date) {
+      return 1
+    }
+    return 0
+  })
   product.priceHistory = history
 
   let tags: ReviewTag[] = []
+  let sourceTags: ReviewTagJson[] = []
+  if (json.review_tags !== undefined && json.review_tags !== null) {
+    sourceTags = json.review_tags
+  }
   let t: number = 0
-  while (t < json.review_tags.length) {
+  while (t < sourceTags.length) {
     tags.push({
-      text: json.review_tags[t].text,
-      type: json.review_tags[t].type,
-      count: json.review_tags[t].count
+      text: safeStr(sourceTags[t].text),
+      type: safeNum(sourceTags[t].type),
+      count: safeNum(sourceTags[t].count)
     })
     t = t + 1
   }
   product.reviewTags = tags
 
   let specs: ProductSpec[] = []
+  let sourceSpecs: ProductSpecJson[] = []
+  if (json.specs !== undefined && json.specs !== null) {
+    sourceSpecs = json.specs
+  }
   let s: number = 0
-  while (s < json.specs.length) {
+  while (s < sourceSpecs.length) {
     specs.push({
-      key: json.specs[s].key,
-      value: json.specs[s].value
+      key: safeStr(sourceSpecs[s].key),
+      value: safeStr(sourceSpecs[s].value)
     })
     s = s + 1
   }
@@ -248,52 +277,178 @@ export class RemoteProductRepository implements ProductRepository {
       if (!found) {
         this.detailCache.push(product)
       }
+      this.mergeProductCache([product])
       return product
     }
     return undefined
   }
 
-  async loadFilteredProducts(selection: FilterSelection): Promise<void> {
+  async loadFilteredProducts(
+    selection: FilterSelection
+  ): Promise<void> {
     let sortParam: string = 'recommend'
     if (selection.sort === 'pricePriority') {
       sortParam = 'price_low'
     } else if (selection.sort === 'ratingPriority') {
       sortParam = 'rating'
     }
-    let path: string = '/products?size=100&sort=' + sortParam
+
+    let path: string =
+      '/products?size=100&sort=' + sortParam
+
     if (selection.categoryId.length > 0) {
-      path = path + '&category_id=' + encodeURIComponent(selection.categoryId)
+      path = path +
+        '&category_id=' +
+        encodeURIComponent(selection.categoryId)
     } else if (selection.categoryName.length > 0) {
-      path = path + '&category=' + encodeURIComponent(selection.categoryName)
+      path = path +
+        '&category=' +
+        encodeURIComponent(selection.categoryName)
     }
+
     if (selection.subCategoryId.length > 0) {
-      path = path + '&sub_category_id=' + encodeURIComponent(selection.subCategoryId)
+      path = path +
+        '&sub_category_id=' +
+        encodeURIComponent(selection.subCategoryId)
     }
+
     if (selection.brands.length > 0) {
-      path = path + '&brand=' + encodeURIComponent(this.joinBrands(selection.brands))
+      path = path +
+        '&brand=' +
+        encodeURIComponent(
+          this.joinBrands(selection.brands)
+        )
     }
+
     if (selection.minPrice > 0) {
-      path = path + '&min_price=' + selection.minPrice.toString()
+      path = path +
+        '&min_price=' +
+        selection.minPrice.toString()
     }
+
     if (selection.maxPrice > 0) {
-      path = path + '&max_price=' + selection.maxPrice.toString()
+      path = path +
+        '&max_price=' +
+        selection.maxPrice.toString()
     }
+
     let response = await this.client.get(path)
     if (response.statusCode === 200) {
       let data: ProductListJson = JSON.parse(response.data)
       let products: Product[] = []
       let i: number = 0
+
       while (i < data.items.length) {
         products.push(jsonToProduct(data.items[i]))
         i = i + 1
       }
+
       this.productCache = products
     }
+  }
+
+  async loadFilteredProductsByParams(
+    params: ProductFilterParams
+  ): Promise<Product[]> {
+    let allProducts: Product[] = []
+    let page: number = 1
+    let total: number = 0
+    let keepLoading: boolean = true
+
+    while (keepLoading) {
+      let path: string =
+        this.buildFilterPath(params, page, 100)
+      let response = await this.client.get(path)
+
+      if (response.statusCode !== 200) {
+        return []
+      }
+
+      let data: ProductListJson = JSON.parse(response.data)
+      total = data.total
+
+      let pageProducts: Product[] = []
+      let i: number = 0
+      while (i < data.items.length) {
+        let product: Product = jsonToProduct(data.items[i])
+        pageProducts.push(product)
+        allProducts.push(product)
+        i = i + 1
+      }
+
+      this.mergeProductCache(pageProducts)
+
+      if (
+        data.items.length === 0 ||
+        allProducts.length >= total
+      ) {
+        keepLoading = false
+      } else {
+        page = page + 1
+      }
+    }
+
+    return allProducts
+  }
+
+  async getFilteredProductCount(params: ProductFilterParams): Promise<number> {
+    let path: string = this.buildFilterPath(params, 1, 1)
+    let response = await this.client.get(path)
+
+    if (response.statusCode !== 200) {
+      return 0
+    }
+
+    let data: ProductListJson = JSON.parse(response.data)
+    return data.total
+  }
+
+  private buildFilterPath(
+    params: ProductFilterParams,
+    page: number,
+    size: number
+  ): string {
+    let path: string =
+      '/products?page=' + page.toString() +
+      '&size=' + size.toString()
+
+    if (params.category.length > 0) {
+      path = path +
+        '&category=' +
+        encodeURIComponent(params.category)
+    }
+
+    if (params.brands.length > 0) {
+      path = path +
+        '&brand=' +
+        encodeURIComponent(params.brands.join(','))
+    }
+
+    if (params.minPrice > 0) {
+      path = path +
+        '&min_price=' +
+        params.minPrice.toString()
+    }
+
+    if (params.maxPrice > 0) {
+      path = path +
+        '&max_price=' +
+        params.maxPrice.toString()
+    }
+
+    if (params.sort.length > 0) {
+      path = path +
+        '&sort=' +
+        encodeURIComponent(params.sort)
+    }
+
+    return path
   }
 
   private joinBrands(brands: string[]): string {
     let result: string = ''
     let i: number = 0
+
     while (i < brands.length) {
       if (brands[i].length > 0) {
         if (result.length > 0) {
@@ -303,7 +458,33 @@ export class RemoteProductRepository implements ProductRepository {
       }
       i = i + 1
     }
+
     return result
+  }
+
+  private mergeProductCache(products: Product[]): void {
+    let i: number = 0
+
+    while (i < products.length) {
+      let product: Product = products[i]
+      let found: boolean = false
+      let j: number = 0
+
+      while (j < this.productCache.length) {
+        if (this.productCache[j].id === product.id) {
+          this.productCache[j] = product
+          found = true
+          break
+        }
+        j = j + 1
+      }
+
+      if (!found) {
+        this.productCache.push(product)
+      }
+
+      i = i + 1
+    }
   }
 
   getProducts(): Product[] {

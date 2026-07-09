@@ -1,8 +1,9 @@
 import { router } from '@kit.ArkUI'
-import { FilterSelection, Product } from '../models/DataModels'
+import { Product } from '../models/DataModels'
 import { DataProvider } from '../data/DataProvider'
 import { NavParams } from '../utils/PreferenceManager'
 import { FilterResultCard } from '../components/filter/FilterResultCard'
+import { ProductFilterParams } from '../data/repository/ProductRepository'
 
 @Entry
 @Component
@@ -14,37 +15,28 @@ struct CompareResultPage {
   @State categoryName: string = ''
   @State selectedBrands: string = ''
   @State selectedPriceLabel: string = ''
+  @State selectedMinPrice: number = 0
+  @State selectedMaxPrice: number = 0
   @State selectedOtherLabels: string = ''
-  @State selection: FilterSelection = {
-    categoryId: '',
-    categoryName: '',
-    subCategoryId: '',
-    subCategoryName: '',
-    brands: [],
-    minPrice: 0,
-    maxPrice: 0,
-    priceLabel: '',
-    sort: 'recommend'
-  }
   @State summaryHeight: number = 46
   @State summaryOpacity: number = 1
   @State summaryBottomMargin: number = 0
   @State showSummaryBanner: boolean = true
   @State showSortExpanded: boolean = true
+  @State compareMode: boolean = false
+  @State selectedCompareIds: string[] = []
 
   private summaryTimer: number = -1
   private summaryHideTimer: number = -1
+  private loadRequestSeq: number = 0
 
   aboutToAppear(): void {
     this.categoryName = NavParams.categoryName
     this.selectedBrands = NavParams.selectedBrands
     this.selectedPriceLabel = NavParams.selectedPriceLabel
+    this.selectedMinPrice = NavParams.selectedMinPrice
+    this.selectedMaxPrice = NavParams.selectedMaxPrice
     this.selectedOtherLabels = NavParams.selectedOtherLabels
-    this.selection = this.resolveSelection()
-    this.categoryName = this.selection.categoryName
-    this.selectedBrands = this.joinBrands(this.selection.brands)
-    this.selectedPriceLabel = this.selection.priceLabel
-    this.selectedOtherLabels = ''
 
     this.loadData()
   }
@@ -62,17 +54,64 @@ struct CompareResultPage {
   }
 
   async loadData(): Promise<void> {
+    await this.fetchFilteredProducts(true)
+  }
+
+  async reloadForSort(): Promise<void> {
+    await this.fetchFilteredProducts(false)
+  }
+
+  async fetchFilteredProducts(
+    resetPanels: boolean
+  ): Promise<void> {
+    this.loadRequestSeq = this.loadRequestSeq + 1
+    let requestSeq: number = this.loadRequestSeq
     this.isLoading = true
 
-    let request: FilterSelection = this.createSelectionForSort()
+    let params: ProductFilterParams =
+      this.buildFilterParams()
 
-    await DataProvider.getProductRepository().loadFilteredProducts(request)
+    let filtered: Product[] =
+      await DataProvider
+        .getProductRepository()
+        .loadFilteredProductsByParams(params)
 
-    this.selection = request
-    this.allFilteredProducts = DataProvider.getProductRepository().getProducts()
-    this.applySort()
+    if (requestSeq !== this.loadRequestSeq) {
+      return
+    }
+
+    this.allFilteredProducts = filtered
+    this.products = filtered
     this.isLoading = false
 
+    if (resetPanels) {
+      this.startEntryPanels()
+    }
+  }
+
+  buildFilterParams(): ProductFilterParams {
+    return {
+      category: this.categoryName,
+      brands: this.parseCommaList(this.selectedBrands),
+      minPrice: this.selectedMinPrice,
+      maxPrice: this.selectedMaxPrice,
+      sort: this.getApiSortValue()
+    }
+  }
+
+  getApiSortValue(): string {
+    if (this.sortType === 'pricePriority') {
+      return 'price_low'
+    }
+
+    if (this.sortType === 'ratingPriority') {
+      return 'rating'
+    }
+
+    return 'recommend'
+  }
+
+  startEntryPanels(): void {
     this.summaryHeight = 46
     this.summaryOpacity = 1
     this.summaryBottomMargin = 0
@@ -112,114 +151,6 @@ struct CompareResultPage {
     }, 3000)
   }
 
-  resolveSelection(): FilterSelection {
-    if (NavParams.filterSelection.categoryName.length > 0) {
-      return NavParams.filterSelection
-    }
-
-    return {
-      categoryId: NavParams.categoryId,
-      categoryName: NavParams.categoryName,
-      subCategoryId: '',
-      subCategoryName: '',
-      brands: this.parseCommaList(NavParams.selectedBrands),
-      minPrice: 0,
-      maxPrice: 0,
-      priceLabel: NavParams.selectedPriceLabel,
-      sort: this.sortType
-    }
-  }
-
-  createSelectionForSort(): FilterSelection {
-    return {
-      categoryId: this.selection.categoryId,
-      categoryName: this.selection.categoryName,
-      subCategoryId: this.selection.subCategoryId,
-      subCategoryName: this.selection.subCategoryName,
-      brands: this.copyBrands(this.selection.brands),
-      minPrice: this.selection.minPrice,
-      maxPrice: this.selection.maxPrice,
-      priceLabel: this.selection.priceLabel,
-      sort: this.sortType
-    }
-  }
-
-  copyBrands(brands: string[]): string[] {
-    let result: string[] = []
-    let i: number = 0
-    while (i < brands.length) {
-      result.push(brands[i])
-      i = i + 1
-    }
-    return result
-  }
-
-  joinBrands(brands: string[]): string {
-    let result: string = ''
-    let i: number = 0
-    while (i < brands.length) {
-      if (brands[i].length > 0) {
-        if (result.length > 0) {
-          result = result + ','
-        }
-        result = result + brands[i]
-      }
-      i = i + 1
-    }
-    return result
-  }
-
-  matchesBrand(brand: string): boolean {
-    let brands: string[] = this.selection.brands
-
-    return brands.indexOf(brand) >= 0
-  }
-
-  matchesPriceRange(
-    lowestPrice: number
-  ): boolean {
-    let label: string = this.selectedPriceLabel
-
-    if (label.length === 0) {
-      return true
-    }
-
-    let belowIndex: number = label.indexOf('以下')
-
-    if (belowIndex >= 0) {
-      return lowestPrice <= Number(
-        label.substring(0, belowIndex)
-      )
-    }
-
-    let aboveIndex: number = label.indexOf('以上')
-
-    if (aboveIndex >= 0) {
-      return lowestPrice >= Number(
-        label.substring(0, aboveIndex)
-      )
-    }
-
-    let dashIndex: number = label.indexOf('-')
-
-    if (dashIndex >= 0) {
-      let minValue: number = Number(
-        label.substring(0, dashIndex)
-      )
-
-      let maxValue: number = Number(
-        label.substring(dashIndex + 1)
-      )
-
-      return (
-        lowestPrice >= minValue &&
-        lowestPrice <= maxValue
-      )
-    }
-
-    return true
-  }
-
   parseCommaList(str: string): string[] {
     if (str.length === 0) {
       return []
@@ -250,45 +181,13 @@ struct CompareResultPage {
     return result
   }
 
-  applySort(): void {
-    let sorted: Product[] = []
-    let i: number = 0
-
-    while (i < this.allFilteredProducts.length) {
-      sorted.push(this.allFilteredProducts[i])
-      i = i + 1
-    }
-
-    if (this.sortType === 'recommend') {
-      sorted.sort(
-        (a: Product, b: Product): number => {
-          return b.aggregateScore - a.aggregateScore
-        }
-      )
-    } else if (this.sortType === 'pricePriority') {
-      sorted.sort(
-        (a: Product, b: Product): number => {
-          return a.lowestPrice - b.lowestPrice
-        }
-      )
-    } else if (this.sortType === 'ratingPriority') {
-      sorted.sort(
-        (a: Product, b: Product): number => {
-          return b.aggregateRating - a.aggregateRating
-        }
-      )
-    }
-
-    this.products = sorted
-  }
-
   changeSort(type: string): void {
     if (this.sortType === type) {
       return
     }
 
     this.sortType = type
-    this.loadData()
+    this.reloadForSort()
   }
 
   getCurrentSortLabel(): string {
@@ -332,35 +231,23 @@ struct CompareResultPage {
   }
 
   getPlatformCount(): number {
-    let platformNames: string[] = []
+    let maxCount: number = 0
     let i: number = 0
 
     while (i < this.products.length) {
-      let j: number = 0
-
-      while (
-        j <
-        this.products[i].platformListings.length
-      ) {
-        let name: string =
-          this.products[i].platformListings[j].platform
-
-        if (platformNames.indexOf(name) < 0) {
-          platformNames.push(name)
-        }
-
-        j = j + 1
+      if (this.products[i].platformCount > maxCount) {
+        maxCount = this.products[i].platformCount
       }
-
       i = i + 1
     }
 
-    return platformNames.length
+    return maxCount
   }
 
   getSelectedFilterLabels(): string[] {
     let labels: string[] = []
-    let brands: string[] = this.selection.brands
+    let brands: string[] =
+      this.parseCommaList(this.selectedBrands)
 
     let i: number = 0
 
@@ -369,13 +256,8 @@ struct CompareResultPage {
       i = i + 1
     }
 
-    if (this.selection.priceLabel.length > 0) {
-      labels.push('¥' + this.selection.priceLabel)
-    } else if (
-      this.selection.minPrice > 0 ||
-      this.selection.maxPrice > 0
-    ) {
-      labels.push(this.formatPriceRangeLabel())
+    if (this.selectedPriceLabel.length > 0) {
+      labels.push('¥' + this.selectedPriceLabel)
     }
 
     let others: string[] =
@@ -388,24 +270,7 @@ struct CompareResultPage {
       j = j + 1
     }
 
-    if (this.selection.subCategoryName.length > 0) {
-      labels.push(this.selection.subCategoryName)
-    }
-
     return labels
-  }
-
-  formatPriceRangeLabel(): string {
-    if (this.selection.minPrice > 0 && this.selection.maxPrice > 0) {
-      return '¥' + this.selection.minPrice.toString() + '-' + this.selection.maxPrice.toString()
-    }
-    if (this.selection.minPrice > 0) {
-      return '¥' + this.selection.minPrice.toString() + '以上'
-    }
-    if (this.selection.maxPrice > 0) {
-      return '¥' + this.selection.maxPrice.toString() + '以下'
-    }
-    return ''
   }
 
   navigateToDetail(product: Product): void {
@@ -488,7 +353,7 @@ struct CompareResultPage {
       Text(
         '找到 ' +
         this.products.length.toString() +
-        ' 件商品 · 覆盖 ' +
+        ' 件商品 · 单品最多覆盖 ' +
         this.getPlatformCount().toString() +
         ' 个平台'
       )
@@ -650,6 +515,59 @@ struct CompareResultPage {
   }
 
   @Builder
+  buildCompareModeBanner(): void {
+    Row() {
+      Column({ space: 3 }) {
+        Text('选择要对比的商品')
+          .fontSize(14)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#1C1C1E')
+
+        Text('点击商品卡片加入或移出对比，最多选择 4 款')
+          .fontSize(11)
+          .fontColor('#6E7178')
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+
+      Text(
+        this.selectedCompareIds.length.toString() +
+        ' / 4'
+      )
+        .fontSize(13)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#5267E8')
+        .padding({
+          left: 10,
+          right: 10,
+          top: 6,
+          bottom: 6
+        })
+        .backgroundColor('#EEF1FF')
+        .borderRadius(9)
+    }
+    .width('100%')
+    .padding({
+      left: 14,
+      right: 14,
+      top: 12,
+      bottom: 12
+    })
+    .margin({
+      left: 16,
+      right: 16,
+      bottom: 10
+    })
+    .backgroundColor(Color.White)
+    .borderRadius(14)
+    .border({
+      width: 1,
+      color: '#DDE2FF'
+    })
+    .alignItems(VerticalAlign.Center)
+  }
+
+  @Builder
   buildEmptyState(): void {
     Column({ space: 14 }) {
       Column() {
@@ -759,54 +677,186 @@ struct CompareResultPage {
     .scrollBar(BarState.Off)
   }
 
+  isCompareSelected(productId: string): boolean {
+    return this.selectedCompareIds.indexOf(productId) >= 0
+  }
+
+  enterCompareMode(): void {
+    this.compareMode = true
+    this.selectedCompareIds = []
+  }
+
+  cancelCompareMode(): void {
+    this.compareMode = false
+    this.selectedCompareIds = []
+  }
+
+  toggleCompareProduct(product: Product): void {
+    let selectedIndex: number =
+      this.selectedCompareIds.indexOf(product.id)
+    let nextIds: string[] = []
+    let i: number = 0
+
+    if (selectedIndex >= 0) {
+      while (i < this.selectedCompareIds.length) {
+        if (i !== selectedIndex) {
+          nextIds.push(this.selectedCompareIds[i])
+        }
+        i = i + 1
+      }
+
+      this.selectedCompareIds = nextIds
+      return
+    }
+
+    if (this.selectedCompareIds.length >= 4) {
+      return
+    }
+
+    while (i < this.selectedCompareIds.length) {
+      nextIds.push(this.selectedCompareIds[i])
+      i = i + 1
+    }
+
+    nextIds.push(product.id)
+    this.selectedCompareIds = nextIds
+  }
+
+  buildProductIdList(ids: string[]): string {
+    let result: string = ''
+    let i: number = 0
+
+    while (i < ids.length) {
+      if (result.length > 0) {
+        result = result + ','
+      }
+
+      result = result + ids[i]
+      i = i + 1
+    }
+
+    return result
+  }
+
+  startCompare(): void {
+    if (this.selectedCompareIds.length < 2) {
+      return
+    }
+
+    NavParams.compareProductIds =
+      this.buildProductIdList(this.selectedCompareIds)
+
+    router.pushUrl({
+      url: 'pages/CompareTablePage'
+    })
+  }
+
   @Builder
   buildBottomActions(): void {
-    Row({ space: 12 }) {
-      Button('详细对比表')
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-        .fontColor('#5267E8')
-        .backgroundColor(Color.White)
-        .borderRadius(14)
-        .border({
-          width: 1,
-          color: '#5267E8'
-        })
-        .layoutWeight(1)
-        .height(48)
-        .onClick(() => {
-          NavParams.categoryId = this.selection.categoryId
-          NavParams.categoryName = this.categoryName
-          NavParams.selectedBrands = this.joinBrands(this.selection.brands)
-          NavParams.selectedPriceLabel =
-            this.selection.priceLabel
+    if (this.compareMode) {
+      Row() {
+        Column({ space: 3 }) {
+          Text(
+            '已选 ' +
+            this.selectedCompareIds.length.toString() +
+            ' / 4'
+          )
+            .fontSize(15)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#1C1C1E')
 
-          router.pushUrl({
-            url: 'pages/CompareTablePage'
+          Text('至少选择 2 款，最多 4 款')
+            .fontSize(11)
+            .fontColor('#8E8E93')
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
+
+        Button('取消')
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#5E6168')
+          .backgroundColor('#F5F6F8')
+          .borderRadius(12)
+          .height(44)
+          .padding({
+            left: 16,
+            right: 16
           })
-        })
+          .margin({ right: 8 })
+          .onClick(() => {
+            this.cancelCompareMode()
+          })
 
-      Button('只看低价')
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(Color.White)
-        .backgroundColor('#5267E8')
-        .borderRadius(14)
-        .layoutWeight(1)
-        .height(48)
-        .onClick(() => {
-          this.navigateToCheapest()
-        })
+        Button('开始对比')
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Color.White)
+          .backgroundColor(
+            this.selectedCompareIds.length >= 2 ?
+            '#5267E8' :
+            '#B8C0F3'
+          )
+          .borderRadius(12)
+          .height(44)
+          .padding({
+            left: 18,
+            right: 18
+          })
+          .onClick(() => {
+            this.startCompare()
+          })
+      }
+      .width('100%')
+      .height(74)
+      .padding({
+        left: 16,
+        right: 16,
+        top: 10,
+        bottom: 10
+      })
+      .alignItems(VerticalAlign.Center)
+      .backgroundColor(Color.White)
+    } else {
+      Row({ space: 12 }) {
+        Button('选择商品对比')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#5267E8')
+          .backgroundColor(Color.White)
+          .borderRadius(14)
+          .border({
+            width: 1,
+            color: '#5267E8'
+          })
+          .layoutWeight(1)
+          .height(48)
+          .onClick(() => {
+            this.enterCompareMode()
+          })
+
+        Button('只看低价')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Color.White)
+          .backgroundColor('#5267E8')
+          .borderRadius(14)
+          .layoutWeight(1)
+          .height(48)
+          .onClick(() => {
+            this.navigateToCheapest()
+          })
+      }
+      .width('100%')
+      .height(68)
+      .padding({
+        left: 16,
+        right: 16,
+        top: 10,
+        bottom: 10
+      })
+      .backgroundColor(Color.White)
     }
-    .width('100%')
-    .height(68)
-    .padding({
-      left: 16,
-      right: 16,
-      top: 10,
-      bottom: 10
-    })
-    .backgroundColor(Color.White)
   }
 
   navigateToCheapest(): void {
@@ -850,6 +900,10 @@ struct CompareResultPage {
 
         this.buildSortPanel()
 
+        if (this.compareMode) {
+          this.buildCompareModeBanner()
+        }
+
         List({ space: 12 }) {
           ForEach(
             this.products,
@@ -860,10 +914,18 @@ struct CompareResultPage {
               ListItem() {
                 FilterResultCard({
                   product: product,
+                  compareMode: this.compareMode,
+                  isCompareSelected:
+                    this.isCompareSelected(product.id),
                   onProductAction: (
                     selected: Product
                   ): void => {
                     this.navigateToDetail(selected)
+                  },
+                  onCompareAction: (
+                    selected: Product
+                  ): void => {
+                    this.toggleCompareProduct(selected)
                   }
                 })
                   .margin({

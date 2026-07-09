@@ -1,5 +1,4 @@
 import { Product } from '../../models/DataModels'
-import { formatPrice } from '../../utils/FormatUtils'
 
 function emptyProduct(): Product {
   return {
@@ -14,6 +13,7 @@ function emptyProduct(): Product {
     aggregateRating: 0,
     totalReviewCount: 0,
     platformListings: [],
+    platformCount: 0,
     lowestPrice: 0,
     priceSpread: 0,
     historicalLow: 0,
@@ -76,7 +76,7 @@ export struct SearchProductItem {
         })
 
         Row() {
-          Text(formatPrice(this.product.lowestPrice))
+          Text('Y' + this.product.lowestPrice.toFixed(0))
             .fontSize(16)
             .fontWeight(700)
             .fontColor('#FF3B30')

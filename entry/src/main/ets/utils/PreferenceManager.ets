@@ -1,7 +1,17 @@
-import { FilterSelection, UserProfile } from '../models/DataModels'
+import { FilterSelection, UserProfile, LocalUserInfo } from '../models/DataModels'
 import { preferences } from '@kit.ArkData'
 
 const PREF_NAME: string = 'shopcompare_data'
+
+interface LocalUserInfoEntry {
+  userId: string
+  info: LocalUserInfo
+}
+
+interface UserProfileEntry {
+  userId: string
+  profile: UserProfile
+}
 
 let dataPreferences: preferences.Preferences | null = null
 
@@ -30,15 +40,10 @@ class PreferenceStore {
   private favoriteIds: string[] = []
   private darkMode: boolean = false
   private notificationEnabled: boolean = true
-  private userProfile: UserProfile = {
-    preferences: [],
-    dimensions: [],
-    budget: '',
-    platforms: [],
-    isFirstLaunch: true
-  }
   private currentUserId: string = 'u_me'
   private searchHistory: string[] = []
+  private localUserInfos: LocalUserInfoEntry[] = []
+  private userProfiles: UserProfileEntry[] = []
 
   async loadFromDisk(): Promise<void> {
     if (dataPreferences === null) {
@@ -58,15 +63,48 @@ class PreferenceStore {
     if (dataPreferences.hasSync('notificationEnabled')) {
       this.notificationEnabled = dataPreferences.getSync('notificationEnabled', true) as boolean
     }
-    if (dataPreferences.hasSync('userProfile')) {
-      let profileJson: string = dataPreferences.getSync('userProfile', '{}') as string
-      this.userProfile = JSON.parse(profileJson) as UserProfile
-    }
-    if (dataPreferences.hasSync('isFirstLaunch')) {
-      this.userProfile.isFirstLaunch = dataPreferences.getSync('isFirstLaunch', true) as boolean
-    }
     if (dataPreferences.hasSync('currentUserId')) {
       this.currentUserId = dataPreferences.getSync('currentUserId', 'u_me') as string
+    }
+    if (dataPreferences.hasSync('userProfiles')) {
+      let profileListJson: string =
+        dataPreferences.getSync(
+          'userProfiles',
+          '[]'
+        ) as string
+      this.userProfiles =
+        JSON.parse(profileListJson) as UserProfileEntry[]
+    } else if (dataPreferences.hasSync('userProfile')) {
+      let legacyProfileJson: string =
+        dataPreferences.getSync(
+          'userProfile',
+          '{}'
+        ) as string
+      let legacyProfile: UserProfile =
+        JSON.parse(legacyProfileJson) as UserProfile
+
+      if (dataPreferences.hasSync('isFirstLaunch')) {
+        legacyProfile.isFirstLaunch =
+          dataPreferences.getSync(
+            'isFirstLaunch',
+            true
+          ) as boolean
+      }
+
+      this.userProfiles.push({
+        userId: this.currentUserId,
+        profile: this.cloneProfile(legacyProfile)
+      })
+      this.saveUserProfiles()
+    }
+    if (dataPreferences.hasSync('localUserInfos')) {
+      let userInfoJson: string =
+        dataPreferences.getSync(
+          'localUserInfos',
+          '[]'
+        ) as string
+      this.localUserInfos =
+        JSON.parse(userInfoJson) as LocalUserInfoEntry[]
     }
   }
 
@@ -78,9 +116,79 @@ class PreferenceStore {
     persistString('searchHistory', JSON.stringify(this.searchHistory))
   }
 
-  private saveProfile(): void {
-    persistString('userProfile', JSON.stringify(this.userProfile))
-    persistBoolean('isFirstLaunch', this.userProfile.isFirstLaunch)
+  private saveLocalUserInfos(): void {
+    persistString(
+      'localUserInfos',
+      JSON.stringify(this.localUserInfos)
+    )
+  }
+
+  private saveUserProfiles(): void {
+    persistString(
+      'userProfiles',
+      JSON.stringify(this.userProfiles)
+    )
+  }
+
+  private getDefaultUserProfile(): UserProfile {
+    return {
+      preferences: [],
+      dimensions: [],
+      budget: '',
+      platforms: [],
+      isFirstLaunch: true
+    }
+  }
+
+  private cloneProfile(
+    profile: UserProfile
+  ): UserProfile {
+    let preferencesCopy: string[] = []
+    let dimensionsCopy: string[] = []
+    let platformsCopy: string[] = []
+    let i: number = 0
+
+    while (i < profile.preferences.length) {
+      preferencesCopy.push(profile.preferences[i])
+      i = i + 1
+    }
+
+    i = 0
+    while (i < profile.dimensions.length) {
+      dimensionsCopy.push(profile.dimensions[i])
+      i = i + 1
+    }
+
+    i = 0
+    while (i < profile.platforms.length) {
+      platformsCopy.push(profile.platforms[i])
+      i = i + 1
+    }
+
+    return {
+      preferences: preferencesCopy,
+      dimensions: dimensionsCopy,
+      budget: profile.budget,
+      platforms: platformsCopy,
+      isFirstLaunch: profile.isFirstLaunch
+    }
+  }
+
+  private findCurrentProfileIndex(): number {
+    let i: number = 0
+
+    while (i < this.userProfiles.length) {
+      if (
+        this.userProfiles[i].userId ===
+        this.currentUserId
+      ) {
+        return i
+      }
+
+      i = i + 1
+    }
+
+    return -1
   }
 
   getFavoriteIds(): string[] {
@@ -126,21 +234,42 @@ class PreferenceStore {
   }
 
   saveUserProfile(profile: UserProfile): void {
-    this.userProfile = profile
-    this.saveProfile()
+    let index: number = this.findCurrentProfileIndex()
+    let profileCopy: UserProfile =
+      this.cloneProfile(profile)
+
+    if (index >= 0) {
+      this.userProfiles[index].profile = profileCopy
+    } else {
+      this.userProfiles.push({
+        userId: this.currentUserId,
+        profile: profileCopy
+      })
+    }
+
+    this.saveUserProfiles()
   }
 
   loadUserProfile(): UserProfile {
-    return this.userProfile
+    let index: number = this.findCurrentProfileIndex()
+
+    if (index < 0) {
+      return this.getDefaultUserProfile()
+    }
+
+    return this.cloneProfile(
+      this.userProfiles[index].profile
+    )
   }
 
   setFirstLaunchDone(): void {
-    this.userProfile.isFirstLaunch = false
-    persistBoolean('isFirstLaunch', false)
+    let profile: UserProfile = this.loadUserProfile()
+    profile.isFirstLaunch = false
+    this.saveUserProfile(profile)
   }
 
   isFirstLaunch(): boolean {
-    return this.userProfile.isFirstLaunch
+    return this.loadUserProfile().isFirstLaunch
   }
 
   getCurrentUserId(): string {
@@ -175,6 +304,52 @@ class PreferenceStore {
     this.searchHistory = []
     this.saveSearchHistory()
   }
+
+  private getDefaultLocalUserInfo(): LocalUserInfo {
+    return {
+      nickname: '购物达人',
+      bio: '让每一次比价都更聪明'
+    }
+  }
+
+  getLocalUserInfo(): LocalUserInfo {
+    let i: number = 0
+    while (i < this.localUserInfos.length) {
+      if (this.localUserInfos[i].userId === this.currentUserId) {
+        return {
+          nickname: this.localUserInfos[i].info.nickname,
+          bio: this.localUserInfos[i].info.bio
+        }
+      }
+      i = i + 1
+    }
+    return this.getDefaultLocalUserInfo()
+  }
+
+  saveLocalUserInfo(info: LocalUserInfo): void {
+    let i: number = 0
+    while (i < this.localUserInfos.length) {
+      if (this.localUserInfos[i].userId === this.currentUserId) {
+        this.localUserInfos[i].info = {
+          nickname: info.nickname,
+          bio: info.bio
+        }
+        this.saveLocalUserInfos()
+        return
+      }
+      i = i + 1
+    }
+
+    let entry: LocalUserInfoEntry = {
+      userId: this.currentUserId,
+      info: {
+        nickname: info.nickname,
+        bio: info.bio
+      }
+    }
+    this.localUserInfos.push(entry)
+    this.saveLocalUserInfos()
+  }
 }
 
 let store: PreferenceStore = new PreferenceStore()
@@ -196,7 +371,10 @@ export class NavParams {
   };
   static selectedBrands: string = '';
   static selectedPriceLabel: string = '';
+  static selectedMinPrice: number = 0;
+  static selectedMaxPrice: number = 0;
   static selectedOtherLabels: string = '';
+  static compareProductIds: string = '';
 }
 
 export class PreferenceManager {
@@ -271,5 +449,13 @@ export class PreferenceManager {
 
   static clearSearchHistory(): void {
     store.clearSearchHistory()
+  }
+
+  static loadLocalUserInfo(): LocalUserInfo {
+    return store.getLocalUserInfo()
+  }
+
+  static saveLocalUserInfo(info: LocalUserInfo): void {
+    store.saveLocalUserInfo(info)
   }
 }

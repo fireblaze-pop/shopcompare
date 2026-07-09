@@ -35,6 +35,7 @@ export interface Product {
   aggregateRating: number;
   totalReviewCount: number;
   platformListings: PlatformListing[];
+  platformCount: number;
   lowestPrice: number;
   priceSpread: number;
   historicalLow: number;
@@ -89,6 +90,11 @@ export interface UserProfile {
   budget: string;
   platforms: string[];
   isFirstLaunch: boolean;
+}
+
+export interface LocalUserInfo {
+  nickname: string;
+  bio: string;
 }
 
 export interface CompareResult {

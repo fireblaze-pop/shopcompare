@@ -14,6 +14,7 @@ function emptyProduct(): Product {
     aggregateRating: 0,
     totalReviewCount: 0,
     platformListings: [],
+    platformCount: 0,
     lowestPrice: 0,
     priceSpread: 0,
     historicalLow: 0,
@@ -114,7 +115,7 @@ export struct DiscoverProductCard {
         .margin({ top: 7 })
 
         Text(
-          this.product.platformListings.length.toString() +
+          this.product.platformCount.toString() +
           '个平台 · 价差 ¥' +
           this.product.priceSpread.toFixed(2)
         )

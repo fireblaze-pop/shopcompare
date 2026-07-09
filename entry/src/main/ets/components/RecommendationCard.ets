@@ -6,7 +6,7 @@ function emptyProduct(): Product {
   let product: Product = {
     id: '', name: '', modelCode: '', brand: '', category: '', imageUrl: '',
     specs: [], aggregateScore: 0, aggregateRating: 0, totalReviewCount: 0,
-    platformListings: [], lowestPrice: 0, priceSpread: 0, historicalLow: 0,
+    platformListings: [], platformCount: 0, lowestPrice: 0, priceSpread: 0, historicalLow: 0,
     priceHistory: [], reviewTags: [], publishDate: '', description: ''
   }
   return product
