@@ -1,5 +1,7 @@
 import { router } from '@kit.ArkUI'
 import {
+  Category,
+  FilterSelection,
   FilterGroup,
   FilterOption,
   Product
@@ -10,16 +12,32 @@ import { DataProvider } from '../data/DataProvider'
 import { HttpClient } from '../utils/HttpClient'
 import { FilterGroupCard } from '../components/filter/FilterGroupCard'
 
-interface FiltersResponse {
-  category: string
-  brands: string[]
-  price_range: PriceRange
-  product_count: number
+interface BrandItem {
+  name: string
+  count: number
 }
 
-interface PriceRange {
+interface PriceBin {
+  label: string
   min: number
   max: number
+  count: number
+}
+
+interface SubCategoryItem {
+  id: string
+  name: string
+  count: number
+}
+
+interface FiltersResponse {
+  category: string
+  category_id: string
+  sub_category_id: string
+  brands: BrandItem[]
+  price_bins: PriceBin[]
+  sub_categories: SubCategoryItem[]
+  product_count: number
 }
 
 @Entry
@@ -36,6 +54,12 @@ struct CategoryFilterPage {
   aboutToAppear(): void {
     this.categoryName = NavParams.categoryName
     this.categoryId = NavParams.categoryId
+    NavParams.selectedBrands = ''
+    NavParams.selectedPriceLabel = ''
+    NavParams.selectedOtherLabels = ''
+    NavParams.filterSelection = this.createEmptySelection()
+    this.selectedIds = []
+    DataProvider.getProductRepository().clearFilter()
     this.loadFilters()
   }
 
@@ -43,20 +67,21 @@ struct CategoryFilterPage {
     let localGroups: FilterGroup[] =
       MockData.getFilterGroups(this.categoryId)
 
-    this.filterGroups = localGroups
+    this.filterGroups = this.buildLocalExecutableGroups(localGroups)
     this.isLoading = true
 
     try {
-      let resp = await this.http.get(
-        '/filters?category=' + this.categoryName
-      )
+      let path: string = '/filters?category_id=' + encodeURIComponent(this.categoryId)
+      if (this.categoryId.length === 0) {
+        path = '/filters?category=' + encodeURIComponent(this.categoryName)
+      }
+      let resp = await this.http.get(path)
 
       if (
         resp.statusCode === 200 &&
         this.selectedIds.length === 0
       ) {
-        let data: FiltersResponse =
-          JSON.parse(resp.data) as FiltersResponse
+        let data: FiltersResponse = JSON.parse(resp.data)
 
         this.filterGroups =
           this.buildFilterGroups(data, localGroups)
@@ -73,6 +98,27 @@ struct CategoryFilterPage {
   ): FilterGroup[] {
     let groups: FilterGroup[] = []
 
+    if (data.sub_categories.length > 0) {
+      let subOptions: FilterOption[] = []
+      let s: number = 0
+
+      while (s < data.sub_categories.length) {
+        subOptions.push({
+          id: 'sub_remote_' + data.sub_categories[s].id,
+          label: data.sub_categories[s].name,
+          selected: false,
+          value: data.sub_categories[s].id
+        })
+        s = s + 1
+      }
+
+      groups.push({
+        name: '二级分类',
+        type: 'sub_category',
+        options: subOptions
+      })
+    }
+
     if (data.brands.length > 0) {
       let brandOptions: FilterOption[] = []
       let i: number = 0
@@ -80,8 +126,9 @@ struct CategoryFilterPage {
       while (i < data.brands.length) {
         brandOptions.push({
           id: 'brand_remote_' + i.toString(),
-          label: data.brands[i],
-          selected: false
+          label: data.brands[i].name,
+          selected: false,
+          value: data.brands[i].name
         })
         i = i + 1
       }
@@ -104,30 +151,15 @@ struct CategoryFilterPage {
       this.appendLocalGroupByType(groups, localGroups, 'price')
     }
 
-    let j: number = 0
-
-    while (j < localGroups.length) {
-      if (
-        localGroups[j].type !== 'brand' &&
-        localGroups[j].type !== 'price'
-      ) {
-        groups.push(localGroups[j])
-      }
-
-      j = j + 1
-    }
-
     return groups
   }
 
   buildRemotePriceGroup(
     data: FiltersResponse
   ): FilterGroup {
-    let min: number = data.price_range.min
-    let max: number = data.price_range.max
     let options: FilterOption[] = []
 
-    if (max <= min) {
+    if (data.price_bins.length === 0) {
       return {
         name: '价格区间',
         type: 'price',
@@ -135,43 +167,17 @@ struct CategoryFilterPage {
       }
     }
 
-    let step: number = Math.max(
-      1,
-      Math.floor((max - min) / 4)
-    )
-
-    let current: number = min
-    let index: number = 0
-
-    while (current < max) {
-      let next: number = current + step
-
-      if (next >= max) {
-        next = max
-      }
-
+    let i: number = 0
+    while (i < data.price_bins.length) {
       options.push({
-        id: 'price_remote_' + index.toString(),
-        label:
-          current.toString() +
-          '-' +
-          next.toString(),
-        selected: false
+        id: 'price_remote_' + i.toString(),
+        label: data.price_bins[i].label,
+        selected: false,
+        minPrice: data.price_bins[i].min,
+        maxPrice: data.price_bins[i].max
       })
-
-      current = next
-      index = index + 1
-
-      if (current >= max) {
-        break
-      }
+      i = i + 1
     }
-
-    options.push({
-      id: 'price_remote_above',
-      label: max.toString() + '以上',
-      selected: false
-    })
 
     return {
       name: '价格区间',
@@ -197,6 +203,48 @@ struct CategoryFilterPage {
     }
   }
 
+  buildLocalExecutableGroups(
+    localGroups: FilterGroup[]
+  ): FilterGroup[] {
+    let groups: FilterGroup[] = []
+    this.appendLocalSubCategoryGroup(groups)
+    this.appendLocalGroupByType(groups, localGroups, 'brand')
+    this.appendLocalGroupByType(groups, localGroups, 'price')
+    return groups
+  }
+
+  appendLocalSubCategoryGroup(
+    groups: FilterGroup[]
+  ): void {
+    let categories: Category[] =
+      DataProvider.getProductRepository().getCategories()
+    let i: number = 0
+    while (i < categories.length) {
+      if (categories[i].id === this.categoryId) {
+        let options: FilterOption[] = []
+        let j: number = 0
+        while (j < categories[i].subCategories.length) {
+          options.push({
+            id: 'sub_local_' + categories[i].subCategories[j].id,
+            label: categories[i].subCategories[j].name,
+            selected: false,
+            value: categories[i].subCategories[j].id
+          })
+          j = j + 1
+        }
+        if (options.length > 0) {
+          groups.push({
+            name: '二级分类',
+            type: 'sub_category',
+            options: options
+          })
+        }
+        return
+      }
+      i = i + 1
+    }
+  }
+
   toggleOption(optionId: string): void {
     let currentGroup: FilterGroup | undefined =
       this.findGroupByOptionId(optionId)
@@ -212,7 +260,10 @@ struct CategoryFilterPage {
         found = true
       } else if (
         currentGroup !== undefined &&
-        currentGroup.type === 'price' &&
+        (
+          currentGroup.type === 'price' ||
+          currentGroup.type === 'sub_category'
+        ) &&
         this.isOptionInGroup(currentId, currentGroup)
       ) {
       } else {
@@ -274,9 +325,13 @@ struct CategoryFilterPage {
   }
 
   confirmFilters(): void {
-    let selectedBrands: string = ''
+    let selectedBrands: string[] = []
+    let selectedBrandsText: string = ''
     let selectedPriceLabel: string = ''
-    let selectedOtherLabels: string = ''
+    let selectedSubCategoryId: string = ''
+    let selectedSubCategoryName: string = ''
+    let minPrice: number = 0
+    let maxPrice: number = 0
     let i: number = 0
 
     while (i < this.selectedIds.length) {
@@ -289,19 +344,17 @@ struct CategoryFilterPage {
 
         if (group !== undefined) {
           if (group.type === 'brand') {
-            selectedBrands =
-              this.appendCommaValue(
-                selectedBrands,
-                option.label
-              )
+            let brandValue: string = this.getOptionValue(option)
+            selectedBrands.push(brandValue)
+            selectedBrandsText =
+              this.appendCommaValue(selectedBrandsText, brandValue)
           } else if (group.type === 'price') {
             selectedPriceLabel = option.label
-          } else {
-            selectedOtherLabels =
-              this.appendCommaValue(
-                selectedOtherLabels,
-                option.label
-              )
+            minPrice = this.getOptionMinPrice(option)
+            maxPrice = this.getOptionMaxPrice(option)
+          } else if (group.type === 'sub_category') {
+            selectedSubCategoryId = this.getOptionValue(option)
+            selectedSubCategoryName = option.label
           }
         }
       }
@@ -311,13 +364,59 @@ struct CategoryFilterPage {
 
     NavParams.categoryId = this.categoryId
     NavParams.categoryName = this.categoryName
-    NavParams.selectedBrands = selectedBrands
+    NavParams.filterSelection = {
+      categoryId: this.categoryId,
+      categoryName: this.categoryName,
+      subCategoryId: selectedSubCategoryId,
+      subCategoryName: selectedSubCategoryName,
+      brands: selectedBrands,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+      priceLabel: selectedPriceLabel,
+      sort: 'recommend'
+    }
+    NavParams.selectedBrands = selectedBrandsText
     NavParams.selectedPriceLabel = selectedPriceLabel
-    NavParams.selectedOtherLabels = selectedOtherLabels
+    NavParams.selectedOtherLabels = ''
 
     router.pushUrl({
       url: 'pages/CompareResultPage'
     })
+  }
+
+  createEmptySelection(): FilterSelection {
+    return {
+      categoryId: this.categoryId,
+      categoryName: this.categoryName,
+      subCategoryId: '',
+      subCategoryName: '',
+      brands: [],
+      minPrice: 0,
+      maxPrice: 0,
+      priceLabel: '',
+      sort: 'recommend'
+    }
+  }
+
+  getOptionValue(option: FilterOption): string {
+    if (option.value !== undefined) {
+      return option.value
+    }
+    return option.label
+  }
+
+  getOptionMinPrice(option: FilterOption): number {
+    if (option.minPrice !== undefined) {
+      return option.minPrice
+    }
+    return this.parsePriceMin(option.label)
+  }
+
+  getOptionMaxPrice(option: FilterOption): number {
+    if (option.maxPrice !== undefined) {
+      return option.maxPrice
+    }
+    return this.parsePriceMax(option.label)
   }
 
   appendCommaValue(
@@ -355,7 +454,7 @@ struct CategoryFilterPage {
   }
 
   getMatchedProductCount(): number {
-    let products: Product[] = MockData.getProducts()
+    let products: Product[] = DataProvider.getProductRepository().getProducts()
     let count: number = 0
     let i: number = 0
 
@@ -380,7 +479,7 @@ struct CategoryFilterPage {
     product: Product
   ): boolean {
     let selectedBrands: string[] =
-      this.getSelectedLabelsByType('brand')
+      this.getSelectedValuesByType('brand')
 
     if (selectedBrands.length === 0) {
       return true
@@ -392,23 +491,29 @@ struct CategoryFilterPage {
   matchesSelectedPrice(
     price: number
   ): boolean {
-    let priceLabels: string[] =
-      this.getSelectedLabelsByType('price')
+    let option: FilterOption | undefined =
+      this.getSelectedOptionByType('price')
 
-    if (priceLabels.length === 0) {
+    if (option === undefined) {
       return true
     }
 
-    return this.matchesPriceLabel(
-      price,
-      priceLabels[0]
-    )
+    let minValue: number = this.getOptionMinPrice(option)
+    let maxValue: number = this.getOptionMaxPrice(option)
+
+    if (minValue > 0 && price < minValue) {
+      return false
+    }
+    if (maxValue > 0 && price > maxValue) {
+      return false
+    }
+    return true
   }
 
-  getSelectedLabelsByType(
+  getSelectedValuesByType(
     groupType: string
   ): string[] {
-    let labels: string[] = []
+    let values: string[] = []
     let i: number = 0
 
     while (i < this.selectedIds.length) {
@@ -423,14 +528,90 @@ struct CategoryFilterPage {
           group !== undefined &&
           group.type === groupType
         ) {
-          labels.push(option.label)
+          values.push(this.getOptionValue(option))
         }
       }
 
       i = i + 1
     }
 
-    return labels
+    return values
+  }
+
+  getSelectedOptionByType(
+    groupType: string
+  ): FilterOption | undefined {
+    let i: number = 0
+
+    while (i < this.selectedIds.length) {
+      let option: FilterOption | undefined =
+        this.findOptionById(this.selectedIds[i])
+
+      if (option !== undefined) {
+        let group: FilterGroup | undefined =
+          this.findGroupByOptionId(option.id)
+
+        if (
+          group !== undefined &&
+          group.type === groupType
+        ) {
+          return option
+        }
+      }
+
+      i = i + 1
+    }
+
+    return undefined
+  }
+
+  parsePriceMin(
+    label: string
+  ): number {
+    let aboveIndex: number = label.indexOf('以上')
+    if (aboveIndex < 0) {
+      aboveIndex = label.indexOf('浠ヤ笂')
+    }
+
+    if (aboveIndex >= 0) {
+      return Number(label.substring(0, aboveIndex))
+    }
+
+    let dashIndex: number = label.indexOf('-')
+    if (dashIndex >= 0) {
+      return Number(label.substring(0, dashIndex))
+    }
+
+    return 0
+  }
+
+  parsePriceMax(
+    label: string
+  ): number {
+    let belowIndex: number = label.indexOf('以下')
+    if (belowIndex < 0) {
+      belowIndex = label.indexOf('浠ヤ笅')
+    }
+
+    if (belowIndex >= 0) {
+      return Number(label.substring(0, belowIndex))
+    }
+
+    let aboveIndex: number = label.indexOf('以上')
+    if (aboveIndex < 0) {
+      aboveIndex = label.indexOf('浠ヤ笂')
+    }
+
+    if (aboveIndex >= 0) {
+      return 0
+    }
+
+    let dashIndex: number = label.indexOf('-')
+    if (dashIndex >= 0) {
+      return Number(label.substring(dashIndex + 1))
+    }
+
+    return 0
   }
 
   matchesPriceLabel(

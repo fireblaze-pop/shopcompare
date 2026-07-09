@@ -1,7 +1,6 @@
 import { router } from '@kit.ArkUI';
 import { promptAction } from '@kit.ArkUI';
 import { Product, PlatformListing, PricePoint, ReviewTag } from '../models/DataModels';
-import { MockData } from '../data/MockData';
 import { PreferenceManager } from '../utils/PreferenceManager';
 import { NavParams } from '../utils/PreferenceManager';
 import { RadarDimension, RecommendationItem, ProductMeta } from '../models/RecommendationModels';
@@ -36,19 +35,12 @@ struct ProductDetailPage {
     this.loadProductData(productId);
   }
 
-  loadProductData(productId: string): void {
+  async loadProductData(productId: string): Promise<void> {
     this.isLoading = true;
-    setTimeout(() => {
-      let allProducts: Product[] = MockData.getProducts();
-      let i: number = 0;
-      while (i < allProducts.length) {
-        if (allProducts[i].id === productId) {
-          this.product = allProducts[i];
-          break;
-        }
-        i = i + 1;
-      }
-      if (this.product !== undefined) {
+    try {
+      let product: Product | undefined = await DataProvider.loadProductDetail(productId);
+      if (product !== undefined) {
+        this.product = product;
         this.sortPlatformListings(true);
         this.isFavorited = PreferenceManager.isFavorite(productId);
         this.computeReviewTags();
@@ -56,8 +48,9 @@ struct ProductDetailPage {
         this.loadSimilarProducts(productId);
         BehaviorManager.getInstance().recordView(productId);
       }
-      this.isLoading = false;
-    }, 500);
+    } catch (e) {
+    }
+    this.isLoading = false;
   }
 
   computeRadarDimensions(): void {
@@ -143,6 +136,9 @@ struct ProductDetailPage {
   getHighestPrice(): number {
     if (this.product === undefined) {
       return 0;
+    }
+    if (this.product!.platformListings.length === 0) {
+      return this.product!.lowestPrice;
     }
     let highest: number = this.product!.platformListings[0].price;
     let i: number = 1;

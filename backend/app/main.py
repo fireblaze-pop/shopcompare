@@ -17,13 +17,25 @@ def crawler_enabled() -> bool:
     return value not in ('1', 'true', 'yes')
 
 
+def crawler_available() -> bool:
+    try:
+        from crawler.bg_service import get_bg_service  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
 def crawler_disabled_status() -> dict:
+    if not crawler_enabled():
+        return {
+            'running': False, 'total_products': 0,
+            'last_run': '', 'last_count': 0,
+            'last_error': 'crawler disabled', 'interval_minutes': 0
+        }
     return {
-        'running': False,
-        'total_products': 0,
-        'last_run': '',
-        'last_count': 0,
-        'last_error': 'crawler disabled',
+        'running': False, 'total_products': 0,
+        'last_run': '', 'last_count': 0,
+        'last_error': 'scrapling not installed. pip install scrapling[fetchers]',
         'interval_minutes': 0
     }
 
@@ -31,7 +43,7 @@ def crawler_disabled_status() -> dict:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     svc = None
-    if crawler_enabled():
+    if crawler_enabled() and crawler_available():
         from crawler.bg_service import get_bg_service
         from crawler.scheduler import run_sync
 

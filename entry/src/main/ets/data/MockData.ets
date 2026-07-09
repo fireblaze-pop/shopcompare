@@ -197,19 +197,43 @@ export class MockData {
     }
     return [
       {
-        name: '品牌',
+        name: '\u54C1\u724C',
         type: 'brand',
-        options: [
-          { id: 'brand_popular', label: '热门品牌', selected: false }
+        options: (categoryId === 'cat3') ? [
+          { id: 'brand_midea', label: '\u7F8E\u7684', selected: false },
+          { id: 'brand_gree', label: '\u683C\u529B', selected: false },
+          { id: 'brand_haier', label: '\u6D77\u5C14', selected: false },
+          { id: 'brand_dyson', label: '\u6234\u68EE', selected: false },
+          { id: 'brand_philips', label: '\u98DE\u5229\u6D66', selected: false }
+        ] : (categoryId === 'cat4') ? [
+          { id: 'brand_lancome', label: '\u5170\u853B', selected: false },
+          { id: 'brand_esteelauder', label: '\u96C5\u8BD7\u5170\u9EDB', selected: false },
+          { id: 'brand_loreal', label: '\u6B27\u83B1\u96C5', selected: false },
+          { id: 'brand_skii', label: 'SK-II', selected: false },
+          { id: 'brand_nivea', label: '\u59AE\u7EF4\u96C5', selected: false }
+        ] : (categoryId === 'cat5') ? [
+          { id: 'brand_nike', label: 'Nike', selected: false },
+          { id: 'brand_adidas', label: 'Adidas', selected: false },
+          { id: 'brand_zara', label: 'Zara', selected: false },
+          { id: 'brand_coach', label: 'Coach', selected: false },
+          { id: 'brand_levis', label: "Levi's", selected: false }
+        ] : (categoryId === 'cat6') ? [
+          { id: 'brand_moutai', label: '\u8305\u53F0', selected: false },
+          { id: 'brand_squirrel', label: '\u4E09\u53EA\u677E\u9F20', selected: false },
+          { id: 'brand_yili', label: '\u4F0A\u5229', selected: false },
+          { id: 'brand_baicaowei', label: '\u767E\u8349\u5473', selected: false },
+          { id: 'brand_xihu', label: '\u897F\u6E56', selected: false }
+        ] : [
+          { id: 'brand_popular', label: '\u70ED\u95E8\u54C1\u724C', selected: false }
         ]
       },
       {
-        name: '价格区间',
+        name: '\u4EF7\u683C\u533A\u95F4',
         type: 'price',
         options: [
           { id: 'price_0_1000', label: '0-1000', selected: false },
           { id: 'price_1000_3000', label: '1000-3000', selected: false },
-          { id: 'price_3000_above', label: '3000以上', selected: false }
+          { id: 'price_3000_above', label: '3000\u4EE5\u4E0A', selected: false }
         ]
       }
     ]

@@ -13,3 +13,4 @@
 /.cache
 **/__pycache__
 *.db
+*.db-journal

@@ -2,10 +2,13 @@ from pydantic import BaseModel
 
 
 class ProductResponse(BaseModel):
+    model_config = {'protected_namespaces': (), 'from_attributes': True}
+
     id: str
     name: str
     brand: str
     category: str
+    model_code: str = ''
     image_url: str
     description: str
     lowest_price: float
@@ -17,9 +20,6 @@ class ProductResponse(BaseModel):
     total_review_count: int
     platform_count: int
     publish_date: str
-
-    class Config:
-        from_attributes = True
 
 
 class ProductDetailResponse(ProductResponse):

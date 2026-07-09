@@ -6,7 +6,7 @@ import { DataProvider } from '../data/DataProvider'
 
 interface LoginResp {
   access_token: string
-  user_id: string
+  user_id: number
 }
 
 @Entry
@@ -83,7 +83,7 @@ struct LoginPage {
         JSON.parse(resp.data) as LoginResp
 
       this.http.setToken(result.access_token)
-      PreferenceManager.setCurrentUserId(result.user_id)
+      PreferenceManager.setCurrentUserId(result.user_id.toString())
 
       this.navigateAfterLogin()
     } else {
@@ -114,9 +114,10 @@ struct LoginPage {
 
     let body: string =
       '{"phone":"' + this.phone +
-        '","code":"' + this.code + '"}'
+        '","code":"' + this.code +
+        '","login_type":"code"}'
 
-    let resp = await this.http.post('/auth/login-code', body)
+    let resp = await this.http.post('/auth/login', body)
 
     this.isLoading = false
 
@@ -125,7 +126,7 @@ struct LoginPage {
         JSON.parse(resp.data) as LoginResp
 
       this.http.setToken(result.access_token)
-      PreferenceManager.setCurrentUserId(result.user_id)
+      PreferenceManager.setCurrentUserId(result.user_id.toString())
 
       this.navigateAfterLogin()
     } else {

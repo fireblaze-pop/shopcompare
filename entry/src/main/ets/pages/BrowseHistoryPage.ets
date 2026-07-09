@@ -108,13 +108,12 @@ struct BrowseHistoryPage {
   buildHistoryItem(entry: HistoryEntry): void {
     Row() {
       Column() {
-        if (entry.product.imageUrl.length > 0) {
+        if (entry.product.imageUrl !== undefined && entry.product.imageUrl.length > 0) {
           Image(entry.product.imageUrl)
             .width(64)
             .height(64)
             .objectFit(ImageFit.Cover)
-        }
-        if (entry.product.imageUrl.length === 0) {
+        } else {
           Text('\uD83D\uDCE6')
             .fontSize(32)
         }

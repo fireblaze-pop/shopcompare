@@ -1,4 +1,5 @@
 import { router } from '@kit.ArkUI';
+import { DataProvider } from '../data/DataProvider'
 
 @Entry
 @Component
@@ -12,9 +13,20 @@ struct SplashPage {
       });
     }, 100);
 
+    this.initAndNavigate();
+  }
+
+  private async initAndNavigate(): Promise<void> {
+    let startTime: number = Date.now();
+    await DataProvider.init();
+    let elapsed: number = Date.now() - startTime;
+    let remaining: number = 2000 - elapsed;
+    if (remaining < 0) {
+      remaining = 0;
+    }
     setTimeout(() => {
       router.replaceUrl({ url: 'pages/LoginPage' });
-    }, 2000);
+    }, remaining);
   }
 
   build() {

@@ -1,6 +1,6 @@
 import { router } from '@kit.ArkUI'
 import { Product } from '../models/DataModels'
-import { MockData } from '../data/MockData'
+import { DataProvider } from '../data/DataProvider'
 import { NavParams } from '../utils/PreferenceManager'
 import { ProductCompareTable } from '../components/ProductCompareTable'
 
@@ -17,7 +17,7 @@ struct CompareTablePage {
   }
 
   loadData(categoryId: string, selectedBrands: string, selectedPriceLabel: string): void {
-    let allProducts: Product[] = MockData.getProducts()
+    let allProducts: Product[] = DataProvider.getProductRepository().getProducts()
     let categoryField: string = ''
     if (categoryId.length > 4) {
       categoryField = categoryId.substring(4)

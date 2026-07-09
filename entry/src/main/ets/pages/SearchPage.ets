@@ -9,8 +9,17 @@ import { SearchHeader } from '../components/search/SearchHeader'
 import { SearchKeywordPanel } from '../components/search/SearchKeywordPanel'
 import { SearchResultList } from '../components/search/SearchResultList'
 
+interface SearchApiItem {
+  id: string
+  name: string
+  brand: string
+  category: string
+  lowest_price: number
+  image_url: string
+}
+
 interface SearchResult {
-  items: Product[]
+  items: SearchApiItem[]
   total: number
 }
 
@@ -40,14 +49,39 @@ struct SearchPage {
 
     try {
       let resp = await this.http.get(
-        '/search?q=' + keyword
+        '/search?q=' + encodeURIComponent(keyword)
       )
 
       if (resp.statusCode === 200) {
-        let data: SearchResult =
-          JSON.parse(resp.data) as SearchResult
-
-        this.searchResults = data.items
+        let data: SearchResult = JSON.parse(resp.data)
+        let products: Product[] = []
+        let i: number = 0
+        while (i < data.items.length) {
+          let item: SearchApiItem = data.items[i]
+          let product: Product = {
+            id: item.id,
+            name: item.name,
+            modelCode: '',
+            brand: item.brand,
+            category: item.category,
+            imageUrl: item.image_url,
+            specs: [],
+            aggregateScore: 0,
+            aggregateRating: 0,
+            totalReviewCount: 0,
+            platformListings: [],
+            lowestPrice: item.lowest_price,
+            priceSpread: 0,
+            historicalLow: 0,
+            priceHistory: [],
+            reviewTags: [],
+            publishDate: '',
+            description: ''
+          }
+          products.push(product)
+          i = i + 1
+        }
+        this.searchResults = products
         return
       }
     } catch (e) {
@@ -57,7 +91,7 @@ struct SearchPage {
   }
 
   searchLocally(keyword: string): void {
-    let allProducts: Product[] = MockData.getProducts()
+    let allProducts: Product[] = DataProvider.getProductRepository().getProducts()
     let results: Product[] = []
     let i: number = 0
 

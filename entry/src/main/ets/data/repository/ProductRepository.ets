@@ -1,4 +1,4 @@
-import { Product, Category } from '../../models/DataModels'
+import { Product, Category, FilterSelection } from '../../models/DataModels'
 import { MockData } from '../MockData'
 
 export interface PriceStats {
@@ -13,10 +13,19 @@ export interface ProductRepository {
   getCategories(): Category[]
   getCategoryPriceStats(category: string): PriceStats
   getBrandReputation(brand: string): number
+  loadProducts(): Promise<void>
+  loadCategories(): Promise<void>
+  loadProductDetail(id: string): Promise<Product | undefined>
+  loadFilteredProducts(selection: FilterSelection): Promise<void>
 }
 
 export class MockProductRepository implements ProductRepository {
+  private filteredCache: Product[] = []
+
   getProducts(): Product[] {
+    if (this.filteredCache.length > 0) {
+      return this.filteredCache
+    }
     return MockData.getProducts()
   }
 
@@ -72,31 +81,31 @@ export class MockProductRepository implements ProductRepository {
     if (brand === 'Apple') {
       return 95
     }
-    if (brand === '华为') {
+    if (brand === '\u534E\u4E3A') {
       return 92
     }
-    if (brand === '戴森') {
+    if (brand === '\u6234\u68EE') {
       return 88
     }
-    if (brand === '联想') {
+    if (brand === '\u8054\u60F3') {
       return 82
     }
-    if (brand === '美的') {
+    if (brand === '\u7F8E\u7684') {
       return 80
     }
-    if (brand === '兰蔻') {
+    if (brand === '\u5170\u853B') {
       return 90
     }
     if (brand === 'Nike') {
       return 86
     }
-    if (brand === '戴尔') {
+    if (brand === '\u6234\u5C14') {
       return 80
     }
-    if (brand === '小米') {
+    if (brand === '\u5C0F\u7C73') {
       return 84
     }
-    if (brand === '三星') {
+    if (brand === '\u4E09\u661F') {
       return 85
     }
     if (brand === 'OPPO') {
@@ -106,5 +115,80 @@ export class MockProductRepository implements ProductRepository {
       return 76
     }
     return 70
+  }
+
+  async loadProducts(): Promise<void> {
+  }
+
+  async loadCategories(): Promise<void> {
+  }
+
+  async loadProductDetail(id: string): Promise<Product | undefined> {
+    return this.getProductById(id)
+  }
+
+  async loadFilteredProducts(selection: FilterSelection): Promise<void> {
+    let all: Product[] = MockData.getProducts()
+    let filtered: Product[] = []
+    let i: number = 0
+
+    while (i < all.length) {
+      let product: Product = all[i]
+      let matches: boolean = true
+
+      if (selection.categoryName.length > 0 && product.category !== selection.categoryName) {
+        matches = false
+      }
+
+      if (matches && selection.brands.length > 0) {
+        let brandMatch: boolean = false
+        let j: number = 0
+        while (j < selection.brands.length) {
+          if (product.brand === selection.brands[j]) {
+            brandMatch = true
+            break
+          }
+          j = j + 1
+        }
+        if (!brandMatch) {
+          matches = false
+        }
+      }
+
+      if (matches && selection.minPrice > 0 && product.lowestPrice < selection.minPrice) {
+        matches = false
+      }
+
+      if (matches && selection.maxPrice > 0 && product.lowestPrice > selection.maxPrice) {
+        matches = false
+      }
+
+      if (matches) {
+        filtered.push(product)
+      }
+      i = i + 1
+    }
+
+    if (selection.sort === 'pricePriority') {
+      let a: number = 0
+      while (a < filtered.length) {
+        let b: number = a + 1
+        while (b < filtered.length) {
+          if (filtered[a].lowestPrice > filtered[b].lowestPrice) {
+            let tmp: Product = filtered[a]
+            filtered[a] = filtered[b]
+            filtered[b] = tmp
+          }
+          b = b + 1
+        }
+        a = a + 1
+      }
+    }
+
+    this.filteredCache = filtered
+  }
+
+  clearFilter(): void {
+    this.filteredCache = []
   }
 }

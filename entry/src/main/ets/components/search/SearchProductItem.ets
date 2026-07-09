@@ -1,4 +1,5 @@
 import { Product } from '../../models/DataModels'
+import { formatPrice } from '../../utils/FormatUtils'
 
 function emptyProduct(): Product {
   return {
@@ -33,16 +34,14 @@ export struct SearchProductItem {
   build() {
     Row() {
       Column() {
-        if (this.product.imageUrl.length > 0) {
+        if (this.product.imageUrl !== undefined && this.product.imageUrl.length > 0) {
           Image(this.product.imageUrl)
             .width(64)
             .height(64)
             .objectFit(ImageFit.Cover)
         } else {
-          Image($r('app.media.icon_product_placeholder'))
-            .width(30)
-            .height(30)
-            .objectFit(ImageFit.Contain)
+          Text('\uD83D\uDCE6')
+            .fontSize(28)
         }
       }
       .width(64)
@@ -77,7 +76,7 @@ export struct SearchProductItem {
         })
 
         Row() {
-          Text('¥' + this.product.lowestPrice.toFixed(0))
+          Text(formatPrice(this.product.lowestPrice))
             .fontSize(16)
             .fontWeight(700)
             .fontColor('#FF3B30')

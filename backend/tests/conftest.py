@@ -92,6 +92,15 @@ def client():
 
 
 @pytest.fixture
+def db_session():
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@pytest.fixture
 def auth_token(client):
     phone = '13800138001'
     client.post('/api/v1/auth/send-code', json={'phone': phone})

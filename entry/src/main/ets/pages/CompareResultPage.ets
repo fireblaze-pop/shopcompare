@@ -1,6 +1,6 @@
 import { router } from '@kit.ArkUI'
-import { Product } from '../models/DataModels'
-import { MockData } from '../data/MockData'
+import { FilterSelection, Product } from '../models/DataModels'
+import { DataProvider } from '../data/DataProvider'
 import { NavParams } from '../utils/PreferenceManager'
 import { FilterResultCard } from '../components/filter/FilterResultCard'
 
@@ -15,6 +15,17 @@ struct CompareResultPage {
   @State selectedBrands: string = ''
   @State selectedPriceLabel: string = ''
   @State selectedOtherLabels: string = ''
+  @State selection: FilterSelection = {
+    categoryId: '',
+    categoryName: '',
+    subCategoryId: '',
+    subCategoryName: '',
+    brands: [],
+    minPrice: 0,
+    maxPrice: 0,
+    priceLabel: '',
+    sort: 'recommend'
+  }
   @State summaryHeight: number = 46
   @State summaryOpacity: number = 1
   @State summaryBottomMargin: number = 0
@@ -29,6 +40,11 @@ struct CompareResultPage {
     this.selectedBrands = NavParams.selectedBrands
     this.selectedPriceLabel = NavParams.selectedPriceLabel
     this.selectedOtherLabels = NavParams.selectedOtherLabels
+    this.selection = this.resolveSelection()
+    this.categoryName = this.selection.categoryName
+    this.selectedBrands = this.joinBrands(this.selection.brands)
+    this.selectedPriceLabel = this.selection.priceLabel
+    this.selectedOtherLabels = ''
 
     this.loadData()
   }
@@ -45,48 +61,15 @@ struct CompareResultPage {
     }
   }
 
-  loadData(): void {
+  async loadData(): Promise<void> {
     this.isLoading = true
 
-    let allProducts: Product[] = MockData.getProducts()
-    let filtered: Product[] = []
-    let i: number = 0
+    let request: FilterSelection = this.createSelectionForSort()
 
-    while (i < allProducts.length) {
-      let product: Product = allProducts[i]
-      let matches: boolean = true
+    await DataProvider.getProductRepository().loadFilteredProducts(request)
 
-      if (
-        this.categoryName.length > 0 &&
-        product.category !== this.categoryName
-      ) {
-        matches = false
-      }
-
-      if (
-        matches &&
-        this.selectedBrands.length > 0 &&
-        !this.matchesBrand(product.brand)
-      ) {
-        matches = false
-      }
-
-      if (
-        matches &&
-        this.selectedPriceLabel.length > 0 &&
-        !this.matchesPriceRange(product.lowestPrice)
-      ) {
-        matches = false
-      }
-
-      if (matches) {
-        filtered.push(product)
-      }
-
-      i = i + 1
-    }
-
-    this.allFilteredProducts = filtered
+    this.selection = request
+    this.allFilteredProducts = DataProvider.getProductRepository().getProducts()
     this.applySort()
     this.isLoading = false
 
@@ -129,9 +112,65 @@ struct CompareResultPage {
     }, 3000)
   }
 
+  resolveSelection(): FilterSelection {
+    if (NavParams.filterSelection.categoryName.length > 0) {
+      return NavParams.filterSelection
+    }
+
+    return {
+      categoryId: NavParams.categoryId,
+      categoryName: NavParams.categoryName,
+      subCategoryId: '',
+      subCategoryName: '',
+      brands: this.parseCommaList(NavParams.selectedBrands),
+      minPrice: 0,
+      maxPrice: 0,
+      priceLabel: NavParams.selectedPriceLabel,
+      sort: this.sortType
+    }
+  }
+
+  createSelectionForSort(): FilterSelection {
+    return {
+      categoryId: this.selection.categoryId,
+      categoryName: this.selection.categoryName,
+      subCategoryId: this.selection.subCategoryId,
+      subCategoryName: this.selection.subCategoryName,
+      brands: this.copyBrands(this.selection.brands),
+      minPrice: this.selection.minPrice,
+      maxPrice: this.selection.maxPrice,
+      priceLabel: this.selection.priceLabel,
+      sort: this.sortType
+    }
+  }
+
+  copyBrands(brands: string[]): string[] {
+    let result: string[] = []
+    let i: number = 0
+    while (i < brands.length) {
+      result.push(brands[i])
+      i = i + 1
+    }
+    return result
+  }
+
+  joinBrands(brands: string[]): string {
+    let result: string = ''
+    let i: number = 0
+    while (i < brands.length) {
+      if (brands[i].length > 0) {
+        if (result.length > 0) {
+          result = result + ','
+        }
+        result = result + brands[i]
+      }
+      i = i + 1
+    }
+    return result
+  }
+
   matchesBrand(brand: string): boolean {
-    let brands: string[] =
-      this.parseCommaList(this.selectedBrands)
+    let brands: string[] = this.selection.brands
 
     return brands.indexOf(brand) >= 0
   }
@@ -249,7 +288,7 @@ struct CompareResultPage {
     }
 
     this.sortType = type
-    this.applySort()
+    this.loadData()
   }
 
   getCurrentSortLabel(): string {
@@ -321,8 +360,7 @@ struct CompareResultPage {
 
   getSelectedFilterLabels(): string[] {
     let labels: string[] = []
-    let brands: string[] =
-      this.parseCommaList(this.selectedBrands)
+    let brands: string[] = this.selection.brands
 
     let i: number = 0
 
@@ -331,8 +369,13 @@ struct CompareResultPage {
       i = i + 1
     }
 
-    if (this.selectedPriceLabel.length > 0) {
-      labels.push('¥' + this.selectedPriceLabel)
+    if (this.selection.priceLabel.length > 0) {
+      labels.push('¥' + this.selection.priceLabel)
+    } else if (
+      this.selection.minPrice > 0 ||
+      this.selection.maxPrice > 0
+    ) {
+      labels.push(this.formatPriceRangeLabel())
     }
 
     let others: string[] =
@@ -345,7 +388,24 @@ struct CompareResultPage {
       j = j + 1
     }
 
+    if (this.selection.subCategoryName.length > 0) {
+      labels.push(this.selection.subCategoryName)
+    }
+
     return labels
+  }
+
+  formatPriceRangeLabel(): string {
+    if (this.selection.minPrice > 0 && this.selection.maxPrice > 0) {
+      return '¥' + this.selection.minPrice.toString() + '-' + this.selection.maxPrice.toString()
+    }
+    if (this.selection.minPrice > 0) {
+      return '¥' + this.selection.minPrice.toString() + '以上'
+    }
+    if (this.selection.maxPrice > 0) {
+      return '¥' + this.selection.maxPrice.toString() + '以下'
+    }
+    return ''
   }
 
   navigateToDetail(product: Product): void {
@@ -715,11 +775,11 @@ struct CompareResultPage {
         .layoutWeight(1)
         .height(48)
         .onClick(() => {
-          NavParams.categoryId = NavParams.categoryId
+          NavParams.categoryId = this.selection.categoryId
           NavParams.categoryName = this.categoryName
-          NavParams.selectedBrands = this.selectedBrands
+          NavParams.selectedBrands = this.joinBrands(this.selection.brands)
           NavParams.selectedPriceLabel =
-            this.selectedPriceLabel
+            this.selection.priceLabel
 
           router.pushUrl({
             url: 'pages/CompareTablePage'

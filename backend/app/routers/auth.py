@@ -38,7 +38,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token, user_id=user.id)
 
 
 @router.post("/login")
@@ -56,7 +56,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
 
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token, user_id=user.id)
 
 
 @router.post("/send-code")

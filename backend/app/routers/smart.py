@@ -4,25 +4,34 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.brand_catalog import dedupe_products, infer_brand_from_title
+from app.category_catalog import (
+    apply_sub_category_filter,
+    find_sub_category,
+    product_matches_sub_category,
+    resolve_category,
+)
 from app.database import get_db
 from app.models.models import PlatformListing, Product
 
 router = APIRouter()
 
 BRAND_REPUTATION: dict[str, int] = {
-    'Apple': 95,
-    'Huawei': 92,
-    'Xiaomi': 84,
+    'Apple': 95, '\u534E\u4E3A': 92, 'Huawei': 92,
+    'Xiaomi': 84, '\u5C0F\u7C73': 84,
     'OPPO': 78,
     'vivo': 76,
-    'Samsung': 85,
-    'Lenovo': 82,
-    'Dell': 80,
-    'Midea': 80,
-    'Gree': 83,
-    'Haier': 82,
+    'Samsung': 85, '\u4E09\u661F': 85,
+    'Lenovo': 82, '\u8054\u60F3': 82,
+    'Dell': 80, '\u6234\u5C14': 80,
+    'Midea': 80, '\u7F8E\u7684': 80,
+    'Gree': 83, '\u683C\u529B': 83,
+    'Haier': 82, '\u6D77\u5C14': 82,
     'Nike': 86,
     'Adidas': 82,
+    '\u6234\u68EE': 88, 'Dyson': 88,
+    '\u5170\u853B': 90, 'Lancome': 90,
+    '\u8305\u53F0': 95,
 }
 
 PRICE_BINS: list[tuple[str, int, int]] = [
@@ -30,6 +39,8 @@ PRICE_BINS: list[tuple[str, int, int]] = [
     ('100-1000', 100, 1000),
     ('1000-5000', 1000, 5000),
     ('5000-10000', 5000, 10000),
+    ('10000-15000', 10000, 15000),
+    ('15000\u4EE5\u4E0A', 15000, 999999),
 ]
 
 
@@ -76,7 +87,8 @@ def get_product_dimensions(product_id: str, db: Session = Depends(get_db)):
     listings = db.query(PlatformListing).filter(PlatformListing.product_id == product_id).all()
     in_stock_count = sum(1 for item in listings if item.in_stock)
     stock_rate = in_stock_count / max(len(listings), 1)
-    brand_score = BRAND_REPUTATION.get(product.brand, 70)
+    normalized_brand = infer_brand_from_title(product.name or '', product.brand or '')
+    brand_score = BRAND_REPUTATION.get(normalized_brand, 70)
     rating = product.aggregate_rating if product.aggregate_rating > 0 else 4.0
     review_count = max(product.total_review_count, 1)
 
@@ -96,18 +108,54 @@ def get_product_dimensions(product_id: str, db: Session = Depends(get_db)):
 
 
 @router.get('/filters')
-def get_filters(category: str = Query(''), db: Session = Depends(get_db)):
+def get_filters(
+    category_id: str = Query(''),
+    sub_category_id: str = Query(''),
+    category: str = Query(''),
+    db: Session = Depends(get_db)
+):
     query = db.query(Product)
-    if category:
+    category_meta = resolve_category(category_id, category)
+
+    if category_id and category_meta is None:
+        return {
+            'category': '',
+            'category_id': category_id,
+            'sub_category_id': sub_category_id,
+            'brands': [],
+            'price_bins': [],
+            'sub_categories': [],
+            'product_count': 0
+        }
+
+    if category_meta is not None:
+        query = query.filter(Product.category == category_meta['name'])
+    elif category:
         query = query.filter(Product.category == category)
 
-    products = query.all()
+    sub_category = None
+    if sub_category_id:
+        sub_category = find_sub_category(category_meta, sub_category_id)
+        if sub_category is None:
+            return {
+                'category': category_meta['name'] if category_meta is not None else category,
+                'category_id': category_id,
+                'sub_category_id': sub_category_id,
+                'brands': [],
+                'price_bins': [],
+                'sub_categories': [],
+                'product_count': 0
+            }
+        query = apply_sub_category_filter(query, sub_category)
+
+    products = dedupe_products(query.all())
     brand_counts: dict[str, int] = {}
     prices: list[float] = []
 
     for product in products:
-        if product.brand:
-            brand_counts[product.brand] = brand_counts.get(product.brand, 0) + 1
+        brand_name = infer_brand_from_title(product.name or '', product.brand or '')
+        if brand_name:
+            brand_counts[brand_name] = brand_counts.get(brand_name, 0) + 1
         if product.lowest_price > 0:
             prices.append(product.lowest_price)
 
@@ -119,12 +167,26 @@ def get_filters(category: str = Query(''), db: Session = Depends(get_db)):
     price_bins = []
     for label, min_value, max_value in PRICE_BINS:
         count = sum(1 for price in prices if price >= min_value and price <= max_value)
-        price_bins.append({'label': label, 'min': min_value, 'max': max_value, 'count': count})
+        if count > 0:
+            price_bins.append({'label': label, 'min': min_value, 'max': max_value, 'count': count})
+
+    sub_categories = []
+    if category_meta is not None and not sub_category_id:
+        category_products = dedupe_products(
+            db.query(Product).filter(Product.category == category_meta['name']).all()
+        )
+        for item in category_meta['sub_categories']:
+            count = sum(1 for product in category_products if product_matches_sub_category(product, item))
+            if count > 0:
+                sub_categories.append({'id': item['id'], 'name': item['name'], 'count': count})
 
     return {
-        'category': category,
+        'category': category_meta['name'] if category_meta is not None else category,
+        'category_id': category_meta['id'] if category_meta is not None else category_id,
+        'sub_category_id': sub_category_id,
         'brands': brands,
         'price_bins': price_bins,
+        'sub_categories': sub_categories,
         'product_count': len(products)
     }
 
@@ -156,7 +218,7 @@ def _product_to_item(p: Product) -> dict:
     return {
         'id': p.id,
         'name': p.name,
-        'brand': p.brand,
+        'brand': infer_brand_from_title(p.name or '', p.brand or ''),
         'category': p.category,
         'image_url': p.image_url,
         'lowest_price': p.lowest_price,
