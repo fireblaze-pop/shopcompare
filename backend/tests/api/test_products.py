@@ -1,3 +1,6 @@
+from app.models.models import Product
+
+
 def test_get_products(client):
     resp = client.get('/api/v1/products')
     assert resp.status_code == 200
@@ -56,6 +59,36 @@ def test_get_product_detail(client):
     assert data['name'] == 'iPhone 16 Pro Max'
     assert len(data['platform_listings']) > 0
     assert len(data['price_history']) > 0
+
+
+def test_get_generated_product_detail_for_sparse_crawled_product(client, db_session):
+    db_session.add(Product(
+        id='sparse1',
+        name='Sparse Crawled Product',
+        brand='CrawlerBrand',
+        category='手机数码',
+        image_url='https://example.com/product.png',
+        description='',
+        lowest_price=1283,
+        highest_price=1283,
+        price_spread=0,
+        historical_low=1283,
+        aggregate_rating=4.0,
+        aggregate_score=6.5,
+        total_review_count=0,
+        publish_date='2026-07-09'
+    ))
+    db_session.commit()
+
+    resp = client.get('/api/v1/products/sparse1')
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data['id'] == 'sparse1'
+    assert len(data['platform_listings']) == 1
+    assert data['platform_listings'][0]['price'] == 1283
+    assert len(data['price_history']) == 3
+    assert len(data['specs']) >= 2
+    assert len(data['review_tags']) >= 2
 
 
 def test_get_product_not_found(client):

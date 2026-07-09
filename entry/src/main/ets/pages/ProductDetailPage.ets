@@ -35,11 +35,10 @@ struct ProductDetailPage {
     this.loadProductData(productId);
   }
 
-  loadProductData(productId: string): void {
+  async loadProductData(productId: string): Promise<void> {
     this.isLoading = true;
-    setTimeout(() => {
-      let repo = DataProvider.getProductRepository();
-      let product: Product | undefined = repo.getProductById(productId);
+    try {
+      let product: Product | undefined = await DataProvider.loadProductDetail(productId);
       if (product !== undefined) {
         this.product = product;
         this.sortPlatformListings(true);
@@ -49,8 +48,9 @@ struct ProductDetailPage {
         this.loadSimilarProducts(productId);
         BehaviorManager.getInstance().recordView(productId);
       }
-      this.isLoading = false;
-    }, 500);
+    } catch (e) {
+    }
+    this.isLoading = false;
   }
 
   computeRadarDimensions(): void {

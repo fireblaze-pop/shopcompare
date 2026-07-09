@@ -1,3 +1,5 @@
+import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -27,6 +29,103 @@ def product_to_response(p: Product) -> ProductResponse:
         platform_count=len(p.listings) if p.listings else 0,
         publish_date=p.publish_date
     )
+
+
+def _detail_price(product: Product) -> float:
+    prices = [
+        product.lowest_price or 0,
+        product.highest_price or 0,
+        product.historical_low or 0,
+    ]
+    return max(prices)
+
+
+def _detail_listings(product: Product) -> list[dict]:
+    listings = [
+        {
+            'platform': item.platform,
+            'price': item.price,
+            'rating': item.rating,
+            'review_count': item.review_count,
+            'in_stock': item.in_stock,
+            'url': item.url
+        }
+        for item in product.listings
+    ]
+    if listings:
+        return listings
+
+    price = _detail_price(product)
+    if price <= 0:
+        return []
+    return [{
+        'platform': '\u5b9e\u65f6\u91c7\u96c6',
+        'price': price,
+        'rating': product.aggregate_rating or 4.0,
+        'review_count': product.total_review_count or 0,
+        'in_stock': True,
+        'url': ''
+    }]
+
+
+def _detail_history(product: Product) -> list[dict]:
+    history = [
+        {'date': item.date, 'price': item.price}
+        for item in sorted(product.price_history, key=lambda record: record.date)
+    ]
+    if history:
+        return history
+
+    current_price = _detail_price(product)
+    if current_price <= 0:
+        return []
+
+    high_price = product.highest_price or current_price
+    low_price = product.historical_low or current_price
+    middle_price = round((high_price + current_price) / 2, 2)
+    today = datetime.date.today()
+    return [
+        {
+            'date': (today - datetime.timedelta(days=14)).strftime('%Y-%m-%d'),
+            'price': low_price
+        },
+        {
+            'date': (today - datetime.timedelta(days=7)).strftime('%Y-%m-%d'),
+            'price': middle_price
+        },
+        {
+            'date': today.strftime('%Y-%m-%d'),
+            'price': current_price
+        }
+    ]
+
+
+def _detail_specs(product: Product) -> list[dict]:
+    specs: list[dict] = [
+        {'key': '\u54c1\u724c', 'value': product.brand or ''},
+        {'key': '\u54c1\u7c7b', 'value': product.category or ''}
+    ]
+    if product.model_code:
+        specs.append({'key': '\u578b\u53f7', 'value': product.model_code})
+    if product.publish_date:
+        specs.append({'key': '\u91c7\u96c6\u65e5\u671f', 'value': product.publish_date})
+    return specs
+
+
+def _detail_tags(product: Product, listings: list[dict]) -> list[dict]:
+    platform_count = len(listings)
+    review_count = product.total_review_count or sum(
+        item.get('review_count', 0) for item in listings
+    )
+    tags = [
+        {'text': '\u53ef\u6bd4\u4ef7', 'type': 0, 'count': max(platform_count, 1)},
+        {'text': '\u6709\u5b9e\u65f6\u4ef7\u683c', 'type': 0, 'count': max(platform_count, 1)}
+    ]
+    if review_count > 0:
+        tags.append({'text': '\u6709\u8bc4\u4ef7\u6837\u672c', 'type': 0, 'count': review_count})
+    if platform_count <= 1:
+        tags.append({'text': '\u5e73\u53f0\u62a5\u4ef7\u504f\u5c11', 'type': 1, 'count': 1})
+    return tags
 
 
 @router.get('/products', response_model=ProductListResponse)
@@ -79,27 +178,9 @@ def get_product_detail(product_id: str, db: Session = Depends(get_db)):
     if product is None:
         raise HTTPException(status_code=404, detail='product not found')
 
-    listings = [
-        {
-            'platform': item.platform,
-            'price': item.price,
-            'rating': item.rating,
-            'review_count': item.review_count,
-            'in_stock': item.in_stock,
-            'url': item.url
-        }
-        for item in product.listings
-    ]
-
-    history = [
-        {'date': item.date, 'price': item.price}
-        for item in product.price_history
-    ]
-
-    tags = [
-        {'text': 'quality', 'type': 1, 'count': 0},
-        {'text': 'value', 'type': 1, 'count': 0}
-    ]
+    listings = _detail_listings(product)
+    history = _detail_history(product)
+    tags = _detail_tags(product, listings)
 
     return ProductDetailResponse(
         id=product.id,
@@ -118,7 +199,7 @@ def get_product_detail(product_id: str, db: Session = Depends(get_db)):
         total_review_count=product.total_review_count,
         platform_count=len(product.listings),
         publish_date=product.publish_date,
-        specs=[],
+        specs=_detail_specs(product),
         platform_listings=listings,
         price_history=history,
         review_tags=tags
@@ -131,17 +212,7 @@ def get_product_prices(product_id: str, db: Session = Depends(get_db)):
     if product is None:
         raise HTTPException(status_code=404, detail='product not found')
 
-    return [
-        {
-            'platform': item.platform,
-            'price': item.price,
-            'rating': item.rating,
-            'review_count': item.review_count,
-            'in_stock': item.in_stock,
-            'url': item.url
-        }
-        for item in product.listings
-    ]
+    return _detail_listings(product)
 
 
 @router.get('/products/{product_id}/history')
@@ -150,11 +221,7 @@ def get_product_price_history(product_id: str, db: Session = Depends(get_db)):
     if product is None:
         raise HTTPException(status_code=404, detail='product not found')
 
-    history = db.query(PriceHistory).filter(
-        PriceHistory.product_id == product_id
-    ).order_by(PriceHistory.date.asc()).all()
-
-    return [{'date': item.date, 'price': item.price} for item in history]
+    return _detail_history(product)
 
 
 @router.get('/categories')

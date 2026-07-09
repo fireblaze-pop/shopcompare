@@ -1,4 +1,5 @@
 import { Product } from '../../models/DataModels'
+import { formatPrice } from '../../utils/FormatUtils'
 
 function emptyProduct(): Product {
   return {
@@ -75,7 +76,7 @@ export struct SearchProductItem {
         })
 
         Row() {
-          Text('Y' + this.product.lowestPrice.toFixed(0))
+          Text(formatPrice(this.product.lowestPrice))
             .fontSize(16)
             .fontWeight(700)
             .fontColor('#FF3B30')
