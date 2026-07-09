@@ -1,6 +1,4 @@
 import datetime
-import hashlib
-import math
 import re
 import uuid
 from typing import Optional
@@ -14,6 +12,7 @@ from app.brand_catalog import (
     product_brand,
 )
 from app.models.models import PlatformListing, PriceHistory, Product
+from app.product_scoring import compute_overall_score
 
 
 PRICE_RATING_BOOST: float = 0.1
@@ -171,61 +170,8 @@ def _refresh_price_fields(db: Session, product: Product) -> None:
 
 
 def _compute_product_score(db: Session, product: Product) -> None:
-    def _seed(value: str, suffix: str) -> float:
-        digest = hashlib.md5((value + suffix).encode()).hexdigest()
-        return int(digest[:8], 16) % 4000 / 1000.0
-
-    name = product.name or ''
-    image_url = product.image_url or ''
-    brand = product_brand(product)
-
-    appearance = 7.0 + _seed(name, 'a') / 5 if len(image_url) > 10 else 3.0 + _seed(name, 'a') / 5
-    appearance = max(0, min(10, appearance))
-
-    review_total = sum((listing.review_count or 0) for listing in product.listings)
-    if review_total > 0:
-        logistics = math.log10(review_total + 1) / math.log10(100001) * 10
-    else:
-        logistics = 4.0
-    logistics = max(2, min(10, logistics))
-
-    platform_count = len(product.listings)
-    after_sales = max(2, min(platform_count * 2.5, 10))
-
-    brand_score = 7.0 + _seed(brand or name, 'b') / 5 if brand else 3.0
-    brand_score = max(2, min(10, brand_score))
-
-    lowest_price = product.lowest_price or 0
-    historical_low = product.historical_low or 0
-    spread = product.price_spread or 0
-    if lowest_price > 0 and historical_low > 0 and spread > 0:
-        discount_ratio = 1.0 - historical_low / lowest_price
-        spread_ratio = min(spread / lowest_price, 0.5)
-        cost_perf = 5.0 + discount_ratio * 3.0 + spread_ratio * 4.0
-    elif lowest_price > 0 and historical_low > 0:
-        cost_perf = 5.0 + (1.0 - historical_low / lowest_price) * 3.0
-    else:
-        cost_perf = 5.0
-    cost_perf = max(2, min(10, cost_perf))
-
-    ratings = [
-        listing.rating for listing in product.listings
-        if listing.rating and listing.rating > 0
-    ]
-    if ratings:
-        quality = sum(ratings) / len(ratings) * 2.0
-    else:
-        quality = 4.5 + _seed(name, 'q') / 5
-    quality = max(2, min(10, quality))
-
-    score = (
-        appearance * 0.10 +
-        logistics * 0.15 +
-        after_sales * 0.15 +
-        brand_score * 0.20 +
-        cost_perf * 0.25 +
-        quality * 0.15
-    )
-
-    product.aggregate_score = round(score, 1)
-    product.aggregate_rating = round(score, 1)
+    category_products = db.query(Product).filter(Product.category == product.category).all()
+    listings = db.query(PlatformListing).filter(PlatformListing.product_id == product.id).all()
+    score = compute_overall_score(product, category_products, listings)
+    product.aggregate_score = score
+    product.aggregate_rating = score

@@ -3,150 +3,450 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ShopCompare - Crawler Dashboard</title>
+<title>ShopCompare 数据管理</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; padding: 24px; }
-h1 { font-size: 24px; margin-bottom: 20px; color: #f0f6fc; }
-h2 { font-size: 16px; margin: 24px 0 12px; color: #f0f6fc; }
-.card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
-.status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
-.status-dot.green { background: #3fb950; }
-.status-dot.red { background: #f85149; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
-.stat-label { font-size: 12px; color: #8b949e; }
-.stat-value { font-size: 20px; font-weight: 600; color: #f0f6fc; margin-top: 4px; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #21262d; }
-th { color: #8b949e; font-weight: 500; }
-tr:hover td { background: #1c2128; }
-.btn { background: #238636; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
-.btn:hover { background: #2ea043; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-#message { margin-left: 12px; font-size: 13px; }
-.error-row td { color: #f85149; }
-.loading { animation: pulse 1.5s infinite; color: #8b949e; }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f6f8; color: #1f2328; }
+header { height: 58px; background: #182235; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; }
+h1 { font-size: 18px; margin: 0; }
+h2 { font-size: 15px; margin: 0 0 12px; }
+main { padding: 18px; display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; }
+.card { background: #fff; border: 1px solid #d8dee4; border-radius: 8px; padding: 16px; box-shadow: 0 1px 2px rgba(31, 35, 40, 0.04); }
+.toolbar { display: grid; grid-template-columns: 1fr 140px 140px auto auto; gap: 8px; margin-bottom: 12px; }
+input, textarea, select { width: 100%; border: 1px solid #d0d7de; border-radius: 6px; padding: 8px 10px; font-size: 13px; background: #fff; color: #1f2328; }
+textarea { min-height: 72px; resize: vertical; }
+label { display: block; font-size: 12px; color: #57606a; margin-bottom: 5px; }
+button { border: none; border-radius: 6px; padding: 8px 12px; font-size: 13px; cursor: pointer; }
+.primary { background: #2563eb; color: #fff; }
+.secondary { background: #eef2ff; color: #2643a2; }
+.danger { background: #dc2626; color: #fff; }
+.muted { background: #f6f8fa; color: #24292f; border: 1px solid #d0d7de; }
+.small { padding: 5px 8px; font-size: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td { border-bottom: 1px solid #eaeef2; padding: 8px; text-align: left; vertical-align: top; }
+th { color: #57606a; font-weight: 600; background: #f6f8fa; position: sticky; top: 0; }
+tr:hover td { background: #f8fafc; }
+.product-name { max-width: 360px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wide { grid-column: 1 / 3; }
+.right-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.status { font-size: 12px; color: #57606a; }
+.badge { display: inline-block; padding: 2px 6px; border-radius: 999px; background: #eef2ff; color: #3046a8; font-size: 11px; }
+.scroll { max-height: 580px; overflow: auto; border: 1px solid #eaeef2; border-radius: 6px; }
+.warning { color: #9a3412; background: #fff7ed; border: 1px solid #fed7aa; padding: 8px 10px; border-radius: 6px; font-size: 12px; margin-bottom: 12px; }
+.empty { color: #57606a; padding: 14px; text-align: center; }
+@media (max-width: 1100px) {
+  main { grid-template-columns: 1fr; }
+  .toolbar { grid-template-columns: 1fr 1fr; }
+}
 </style>
 </head>
 <body>
+<header>
+  <h1>ShopCompare 数据管理</h1>
+  <div class="status" id="statusText">未加载</div>
+</header>
 
-<h1>ShopCompare - Crawler Dashboard</h1>
-
-<div class="card" id="status-card">
-  <div class="grid">
-    <div>
-      <div class="stat-label">Status</div>
-      <div class="stat-value" id="status-running">Loading...</div>
+<main>
+  <section class="card">
+    <h2>商品数据</h2>
+    <div class="warning">此页面直接操作数据库。删除商品会同时删除平台报价、价格历史、收藏和降价提醒。</div>
+    <div class="toolbar">
+      <input id="queryInput" placeholder="搜索名称 / 品牌 / 类目 / 描述">
+      <input id="categoryInput" placeholder="类目">
+      <input id="brandInput" placeholder="品牌">
+      <button class="primary" onclick="loadProducts(1)">查询</button>
+      <button class="secondary" onclick="newProduct()">新增</button>
     </div>
-    <div>
-      <div class="stat-label">Last Run</div>
-      <div class="stat-value" id="status-lastrun">-</div>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>名称</th>
+            <th>品牌</th>
+            <th>类目</th>
+            <th>最低价</th>
+            <th>评分</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="productRows">
+          <tr><td colspan="6" class="empty">加载中</td></tr>
+        </tbody>
+      </table>
     </div>
-    <div>
-      <div class="stat-label">Total Products</div>
-      <div class="stat-value" id="status-total">-</div>
+    <div class="right-actions">
+      <button class="muted" onclick="prevPage()">上一页</button>
+      <span class="status" id="pageText"></span>
+      <button class="muted" onclick="nextPage()">下一页</button>
     </div>
-    <div>
-      <div class="stat-label">Interval</div>
-      <div class="stat-value" id="status-interval">-</div>
+  </section>
+
+  <section class="card">
+    <h2 id="editorTitle">商品编辑</h2>
+    <div class="grid">
+      <div>
+        <label>ID</label>
+        <input id="idField" placeholder="留空则自动生成">
+      </div>
+      <div>
+        <label>品牌</label>
+        <input id="brandField">
+      </div>
+      <div class="wide">
+        <label>名称</label>
+        <input id="nameField">
+      </div>
+      <div>
+        <label>类目</label>
+        <input id="categoryField">
+      </div>
+      <div>
+        <label>型号</label>
+        <input id="modelField">
+      </div>
+      <div>
+        <label>最低价</label>
+        <input id="lowestField" type="number" step="0.01">
+      </div>
+      <div>
+        <label>最高价</label>
+        <input id="highestField" type="number" step="0.01">
+      </div>
+      <div>
+        <label>价差</label>
+        <input id="spreadField" type="number" step="0.01">
+      </div>
+      <div>
+        <label>历史低价</label>
+        <input id="historicalField" type="number" step="0.01">
+      </div>
+      <div>
+        <label>评价数</label>
+        <input id="reviewField" type="number" step="1">
+      </div>
+      <div>
+        <label>采集日期</label>
+        <input id="publishField">
+      </div>
+      <div class="wide">
+        <label>图片 URL</label>
+        <input id="imageField">
+      </div>
+      <div class="wide">
+        <label>描述</label>
+        <textarea id="descriptionField"></textarea>
+      </div>
     </div>
-  </div>
-  <div style="margin-top:16px">
-    <button class="btn" id="btn-trigger" onclick="triggerCrawl()">Trigger Crawl</button>
-    <span id="message"></span>
-  </div>
-</div>
+    <div class="right-actions">
+      <button class="muted" onclick="newProduct()">清空</button>
+      <button class="primary" onclick="saveProduct()">保存商品</button>
+      <button class="danger" onclick="deleteCurrentProduct()">删除商品</button>
+    </div>
 
-<div class="grid">
-  <div class="card">
-    <h2>By Platform</h2>
-    <table><thead><tr><th>Platform</th><th>Count</th></tr></thead><tbody id="stats-platforms"></tbody></table>
-  </div>
-  <div class="card">
-    <h2>By Category</h2>
-    <table><thead><tr><th>Category</th><th>Count</th></tr></thead><tbody id="stats-categories"></tbody></table>
-  </div>
-</div>
-
-<div class="card">
-  <h2>Latest Products</h2>
-  <table><thead><tr><th>Name</th><th>Platform</th><th>Price</th><th>Category</th><th>Created</th></tr></thead><tbody id="latest-products"></tbody></table>
-</div>
-
-<div class="card">
-  <h2>Crawl Logs</h2>
-  <table><thead><tr><th>Time</th><th>Keyword</th><th>Count</th><th>Error</th></tr></thead><tbody id="crawl-logs"></tbody></table>
-</div>
+    <h2 style="margin-top:18px">平台报价</h2>
+    <div id="listingRows" class="status">先选择商品</div>
+    <div class="grid" style="margin-top:10px">
+      <div>
+        <label>平台</label>
+        <input id="listingPlatform">
+      </div>
+      <div>
+        <label>价格</label>
+        <input id="listingPrice" type="number" step="0.01">
+      </div>
+      <div>
+        <label>评分</label>
+        <input id="listingRating" type="number" step="0.1">
+      </div>
+      <div>
+        <label>评价数</label>
+        <input id="listingReview" type="number" step="1">
+      </div>
+      <div>
+        <label>库存</label>
+        <select id="listingStock">
+          <option value="true">有货</option>
+          <option value="false">缺货</option>
+        </select>
+      </div>
+      <div>
+        <label>当前报价 ID</label>
+        <input id="listingId" disabled>
+      </div>
+      <div class="wide">
+        <label>链接</label>
+        <input id="listingUrl">
+      </div>
+    </div>
+    <div class="right-actions">
+      <button class="muted" onclick="clearListingForm()">清空报价</button>
+      <button class="secondary" onclick="saveListing()">保存报价</button>
+    </div>
+  </section>
+</main>
 
 <script>
-async function fetchJSON(url) {
-  try { let r = await fetch(url); return await r.json(); }
-  catch (e) { return null; }
+let state = { page: 1, size: 20, total: 0, selectedId: '', listings: [] };
+
+function el(id) { return document.getElementById(id); }
+function text(value) { return value === null || value === undefined ? '' : String(value); }
+function num(id) { let value = parseFloat(el(id).value); return Number.isFinite(value) ? value : 0; }
+function intNum(id) { let value = parseInt(el(id).value, 10); return Number.isFinite(value) ? value : 0; }
+function esc(value) {
+  return text(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
-function renderPlatforms(data) {
-  let tbody = document.getElementById('stats-platforms');
-  if (!data || !data.by_platform) { tbody.innerHTML = '<tr><td colspan="2" class="loading">Loading...</td></tr>'; return; }
-  tbody.innerHTML = data.by_platform.map(p => `<tr><td>${p.platform}</td><td>${p.count}</td></tr>`).join('');
+async function api(path, options) {
+  let response = await fetch('/api/v1' + path, options || {});
+  let data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || '请求失败');
+  }
+  return data;
 }
 
-function renderCategories(data) {
-  let tbody = document.getElementById('stats-categories');
-  if (!data || !data.by_category) { tbody.innerHTML = '<tr><td colspan="2" class="loading">Loading...</td></tr>'; return; }
-  tbody.innerHTML = data.by_category.map(c => `<tr><td>${c.category}</td><td>${c.count}</td></tr>`).join('');
+function productPayload() {
+  return {
+    id: el('idField').value.trim(),
+    name: el('nameField').value.trim(),
+    brand: el('brandField').value.trim(),
+    category: el('categoryField').value.trim(),
+    model_code: el('modelField').value.trim(),
+    image_url: el('imageField').value.trim(),
+    description: el('descriptionField').value.trim(),
+    lowest_price: num('lowestField'),
+    highest_price: num('highestField'),
+    price_spread: num('spreadField'),
+    historical_low: num('historicalField'),
+    total_review_count: intNum('reviewField'),
+    publish_date: el('publishField').value.trim()
+  };
 }
 
-function renderLatest(data) {
-  let tbody = document.getElementById('latest-products');
-  if (!data || !data.products) { tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>'; return; }
-  tbody.innerHTML = data.products.map(p =>
-    `<tr><td>${(p.name||'').substring(0,40)}</td><td>${p.platform}</td><td>${p.price.toFixed(0)}</td><td>${p.category}</td><td>${p.created_at}</td></tr>`
+function listingPayload() {
+  return {
+    platform: el('listingPlatform').value.trim(),
+    price: num('listingPrice'),
+    rating: num('listingRating'),
+    review_count: intNum('listingReview'),
+    in_stock: el('listingStock').value === 'true',
+    url: el('listingUrl').value.trim()
+  };
+}
+
+async function loadProducts(page) {
+  state.page = page || state.page;
+  let params = new URLSearchParams();
+  params.set('page', String(state.page));
+  params.set('size', String(state.size));
+  if (el('queryInput').value.trim()) params.set('q', el('queryInput').value.trim());
+  if (el('categoryInput').value.trim()) params.set('category', el('categoryInput').value.trim());
+  if (el('brandInput').value.trim()) params.set('brand', el('brandInput').value.trim());
+  el('productRows').innerHTML = '<tr><td colspan="6" class="empty">加载中</td></tr>';
+  try {
+    let data = await api('/admin/products?' + params.toString());
+    state.total = data.total;
+    renderProducts(data.items);
+    el('pageText').textContent = '第 ' + state.page + ' 页 / 共 ' + state.total + ' 条';
+    el('statusText').textContent = '已加载 ' + data.items.length + ' 条';
+  } catch (err) {
+    el('productRows').innerHTML = '<tr><td colspan="6" class="empty">' + esc(err.message) + '</td></tr>';
+  }
+}
+
+function renderProducts(items) {
+  if (!items || items.length === 0) {
+    el('productRows').innerHTML = '<tr><td colspan="6" class="empty">暂无数据</td></tr>';
+    return;
+  }
+  el('productRows').innerHTML = items.map((p) =>
+    '<tr>' +
+    '<td class="product-name" title="' + esc(p.name) + '">' + esc(p.name) + '</td>' +
+    '<td>' + esc(p.brand) + '</td>' +
+    '<td><span class="badge">' + esc(p.category) + '</span></td>' +
+    '<td>¥' + Number(p.lowest_price || 0).toFixed(0) + '</td>' +
+    '<td>' + Number(p.aggregate_score || 0).toFixed(1) + '</td>' +
+    '<td><button class="small secondary" onclick="loadProduct(\\'' + esc(p.id) + '\\')">编辑</button></td>' +
+    '</tr>'
   ).join('');
 }
 
-function renderLogs(data) {
-  let tbody = document.getElementById('crawl-logs');
-  if (!data || !data.logs) { tbody.innerHTML = '<tr><td colspan="4" class="loading">Loading...</td></tr>'; return; }
-  tbody.innerHTML = data.logs.map(l =>
-    `<tr class="${l.error ? 'error-row' : ''}"><td>${l.time}</td><td>${l.keyword}</td><td>${l.count}</td><td>${l.error||'-'}</td></tr>`
-  ).join('');
+async function loadProduct(id) {
+  let data = await api('/admin/products/' + encodeURIComponent(id));
+  fillProduct(data.product);
 }
 
-function renderStatus(data) {
-  if (!data) { document.getElementById('status-running').innerHTML = '<span class="status-dot red"></span> Disconnected'; return; }
-  let dot = data.running ? '<span class="status-dot green"></span> Running' : '<span class="status-dot red"></span> Stopped';
-  document.getElementById('status-running').innerHTML = dot;
-  document.getElementById('status-lastrun').textContent = data.last_run || 'Never';
-  document.getElementById('status-total').textContent = data.total_products;
-  document.getElementById('status-interval').textContent = data.interval_minutes + ' min';
+function fillProduct(p) {
+  state.selectedId = p.id;
+  el('editorTitle').textContent = '编辑商品';
+  el('idField').value = text(p.id);
+  el('idField').disabled = true;
+  el('nameField').value = text(p.name);
+  el('brandField').value = text(p.brand);
+  el('categoryField').value = text(p.category);
+  el('modelField').value = text(p.model_code);
+  el('imageField').value = text(p.image_url);
+  el('descriptionField').value = text(p.description);
+  el('lowestField').value = text(p.lowest_price);
+  el('highestField').value = text(p.highest_price);
+  el('spreadField').value = text(p.price_spread);
+  el('historicalField').value = text(p.historical_low);
+  el('reviewField').value = text(p.total_review_count);
+  el('publishField').value = text(p.publish_date);
+  renderListings(p.listings || []);
+  clearListingForm();
 }
 
-async function refresh() {
-  let s = await fetchJSON('/api/v1/admin/status');
-  renderStatus(s);
-  let st = await fetchJSON('/api/v1/admin/stats');
-  renderPlatforms(st);
-  renderCategories(st);
-  let lp = await fetchJSON('/api/v1/admin/products/latest');
-  renderLatest(lp);
-  let lg = await fetchJSON('/api/v1/admin/logs');
-  renderLogs(lg);
+function newProduct() {
+  state.selectedId = '';
+  el('editorTitle').textContent = '新增商品';
+  let ids = ['idField','nameField','brandField','categoryField','modelField','imageField','descriptionField','lowestField','highestField','spreadField','historicalField','reviewField','publishField'];
+  ids.forEach((id) => { el(id).value = ''; });
+  el('idField').disabled = false;
+  el('listingRows').innerHTML = '<span class="status">新建商品保存后可维护平台报价</span>';
+  clearListingForm();
 }
 
-async function triggerCrawl() {
-  let btn = document.getElementById('btn-trigger');
-  let msg = document.getElementById('message');
-  btn.disabled = true;
-  msg.textContent = 'Triggering...';
-  let r = await fetchJSON('/api/v1/admin/crawler/run');
-  msg.textContent = r ? (r.message || 'Done') : 'Failed';
-  btn.disabled = false;
-  setTimeout(() => { msg.textContent = ''; }, 5000);
+async function saveProduct() {
+  try {
+    let payload = productPayload();
+    if (!payload.name || !payload.brand || !payload.category) {
+      alert('名称、品牌、类目必填');
+      return;
+    }
+    let data;
+    if (state.selectedId) {
+      data = await api('/admin/products/' + encodeURIComponent(state.selectedId), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      data = await api('/admin/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+    fillProduct(data.product);
+    await loadProducts(state.page);
+  } catch (err) {
+    alert(err.message);
+  }
 }
 
-refresh();
-setInterval(refresh, 30000);
+async function deleteCurrentProduct() {
+  if (!state.selectedId) {
+    alert('请先选择商品');
+    return;
+  }
+  if (!confirm('确认删除该商品及关联报价、历史、收藏、提醒？')) {
+    return;
+  }
+  try {
+    await api('/admin/products/' + encodeURIComponent(state.selectedId), { method: 'DELETE' });
+    newProduct();
+    await loadProducts(state.page);
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+function renderListings(items) {
+  state.listings = items;
+  if (items.length === 0) {
+    el('listingRows').innerHTML = '<div class="empty">暂无平台报价</div>';
+    return;
+  }
+  el('listingRows').innerHTML = '<table><thead><tr><th>平台</th><th>价格</th><th>评分</th><th>库存</th><th>操作</th></tr></thead><tbody>' +
+    items.map((item, index) =>
+      '<tr>' +
+      '<td>' + esc(item.platform) + '</td>' +
+      '<td>¥' + Number(item.price || 0).toFixed(0) + '</td>' +
+      '<td>' + Number(item.rating || 0).toFixed(1) + '</td>' +
+      '<td>' + (item.in_stock ? '有货' : '缺货') + '</td>' +
+      '<td>' +
+      '<button class="small secondary" onclick="editListingAt(' + index + ')">编辑</button> ' +
+      '<button class="small danger" onclick="deleteListing(' + item.id + ')">删除</button>' +
+      '</td>' +
+      '</tr>'
+    ).join('') +
+    '</tbody></table>';
+}
+
+function editListingAt(index) {
+  let item = state.listings[index];
+  if (!item) {
+    return;
+  }
+  el('listingId').value = text(item.id);
+  el('listingPlatform').value = text(item.platform);
+  el('listingPrice').value = text(item.price);
+  el('listingRating').value = text(item.rating);
+  el('listingReview').value = text(item.review_count);
+  el('listingStock').value = item.in_stock ? 'true' : 'false';
+  el('listingUrl').value = text(item.url);
+}
+
+function clearListingForm() {
+  el('listingId').value = '';
+  el('listingPlatform').value = '';
+  el('listingPrice').value = '';
+  el('listingRating').value = '';
+  el('listingReview').value = '';
+  el('listingStock').value = 'true';
+  el('listingUrl').value = '';
+}
+
+async function saveListing() {
+  if (!state.selectedId) {
+    alert('请先保存或选择商品');
+    return;
+  }
+  try {
+    let id = el('listingId').value.trim();
+    let path = id ? '/admin/listings/' + encodeURIComponent(id) : '/admin/products/' + encodeURIComponent(state.selectedId) + '/listings';
+    let method = id ? 'PUT' : 'POST';
+    let data = await api(path, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(listingPayload())
+    });
+    fillProduct(data.product);
+    await loadProducts(state.page);
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function deleteListing(id) {
+  if (!confirm('确认删除该平台报价？')) {
+    return;
+  }
+  try {
+    let data = await api('/admin/listings/' + encodeURIComponent(String(id)), { method: 'DELETE' });
+    fillProduct(data.product);
+    await loadProducts(state.page);
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+function prevPage() {
+  if (state.page > 1) loadProducts(state.page - 1);
+}
+
+function nextPage() {
+  if (state.page * state.size < state.total) loadProducts(state.page + 1);
+}
+
+loadProducts(1);
 </script>
 </body>
 </html>

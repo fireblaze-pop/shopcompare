@@ -1,282 +1,175 @@
-# ShopCompare — 跨平台商品比价助手
+# ShopCompare
 
-**v0.3** | HarmonyOS ArkTS + Python FastAPI | 爬虫驱动真实数据
+HarmonyOS ArkTS + Python FastAPI 的跨平台商品比价应用。
 
-## 项目简介
+当前版本重点支持真实爬虫数据、搜索与筛选接口契约化、商品详情页、六维商品画像、收藏、推荐、历史价格和后端自动降级。
 
-ShopCompare 是一款基于 HarmonyOS ArkTS 的全栈跨平台商品比价 App。后端爬虫自动从慢慢买采集真实电商数据（京东/天猫/拼多多），前端通过 REST API 展示商品列表、跨平台比价、六维雷达图、智能筛选和关键词搜索。
+## 功能概览
 
-**核心价值**：真实爬虫数据驱动，不用手动造数据——后端启动后自动爬取 700+ 件商品。
+| 模块 | 当前行为 |
+|---|---|
+| 商品列表 | 后端 `/api/v1/products` 返回去重后的商品，支持分页、分类、品牌、价格区间、排序 |
+| 搜索 | `/api/v1/search?q=...` 搜索 `name/brand/category/description`，结果返回前去重；低结果搜索会触发实时爬虫队列 |
+| 快捷关键词 | `/api/v1/search/keywords` 基于商品库与类目生成快捷搜索词 |
+| 筛选 | `/api/v1/filters` 返回品牌、结构化价格区间、二级分类和商品数量 |
+| 多级分类 | 后端统一类目目录：一级类目 + 二级类目，前端使用稳定 `category_id/sub_category_id` |
+| 品牌识别 | 本地品牌别名目录从标题推断品牌，`华为/Huawei`、`Apple/苹果/iPhone` 等会归一 |
+| 商品详情 | 展示价格、历史、平台报价、评价标签、商品画像、相似商品 |
+| 查看商品 | 商品详情页“查看商品”按钮复制最低价平台商品链接到手机剪贴板 |
+| 商品画像 | 六维图使用类目权重、价格分位、评价置信度、平台数、库存率、品牌声誉等综合计算 |
+| 综合评分 | 详情页综合分为 0-5 分，由六维图按类目权重加权平均得到 |
+| 爬虫 | FastAPI 启动后可自动启动后台爬虫，也可手动触发；搜索低结果时可实时入队 |
+| 数据管理 | `/api/v1/admin` 提供可视化后台，支持商品和平台报价增删查改 |
 
----
+## 快速启动
 
-## 快速开始（3 步）
-
-### 1. 安装依赖
+建议从项目根目录启动后端，避免 `No module named 'app'`：
 
 ```powershell
-cd backend
-pip install -r requirements.txt
-# 安装 Playwright 浏览器（爬虫需要）
-playwright install chromium
+cd D:\huawei_code\project\shopcompare_codex
+python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
 ```
 
-### 2. 初始化数据库
+如果你进入了 `backend` 目录，则使用：
 
 ```powershell
-python -m app.init_db
-# 输出: Demo seed inserted: 30 products / Test user created
-```
-
-### 3. 启动后端
-
-```powershell
+cd D:\huawei_code\project\shopcompare_codex\backend
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-启动后爬虫 3 秒自动运行，从慢慢买抓取 42 个关键词 × 5 页商品。
+前端使用 DevEco Studio 打开项目，连接模拟器或真机后运行 `entry` 模块。
 
-### 4. 启动 App
+## 后端初始化
 
-DevEco Studio 打开项目 → 连接模拟器 → **Run**
-
-> 首次启动：`module.json5` 已声明 `ohos.permission.INTERNET`，无需额外配置。
-
-### 验证
-
-| 地址 | 说明 |
-|------|------|
-| `http://localhost:8000/health` | 健康检查 |
-| `http://localhost:8000/api/v1/products?size=10` | 商品列表（前 10 件为最新爬虫数据） |
-| `http://localhost:8000/docs` | Swagger API 文档 |
-| `http://localhost:8000/api/v1/crawler/status` | 爬虫运行状态 |
-
----
-
-## 功能
-
-| 功能 | 状态 | 数据来源 |
-|------|:--:|------|
-| 跨平台比价 | ✅ | 爬虫（京东/天猫/拼多多真实价格） |
-| 筛选（品牌 + 价格区间） | ✅ | 42 关键词 × 5 页，700+ 件商品 |
-| 搜索 | ✅ | 后端全文搜索 + 本地降级 |
-| 商品详情 + 雷达图 | ✅ | 六维评分（性价比/品质/品牌/售后/物流/外观） |
-| 收藏 | ✅ | JWT 认证 + 本地持久化 |
-| 推荐引擎 | ✅ | User-CF + Item-CF + 冷启动 |
-| 暗色模式 | ✅ | 一键切换，本地持久化 |
-| 离线降级 | ✅ | 后端不可用自动切换 MockData（30 件） |
-| 商品图片 | ✅ | 爬虫抓取真实 CDN 图片（99% 覆盖率） |
-
----
-
-## 项目结构
-
-```
-ShopCompare_v0.3/
-├── backend/
-│   ├── app/                        # FastAPI 应用
-│   │   ├── main.py                 # 入口 + 路由注册 + 爬虫生命周期
-│   │   ├── database.py             # SQLAlchemy 配置
-│   │   ├── init_db.py              # 30 件种子数据 + 测试用户
-│   │   ├── models/models.py        # ORM 模型
-│   │   ├── routers/                # 8 个路由模块
-│   │   │   ├── products.py         # 商品（列表/详情/价格/历史）
-│   │   │   ├── search.py           # 搜索
-│   │   │   ├── smart.py            # 推荐/雷达图/筛选/品牌声誉
-│   │   │   ├── auth.py             # JWT 认证
-│   │   │   ├── favorites.py        # 收藏
-│   │   │   ├── alerts.py           # 降价提醒
-│   │   │   └── behaviors.py        # 行为上报
-│   │   └── schemas/                # Pydantic 模型
-│   ├── crawler/                    # 爬虫子系统
-│   │   ├── base/                   # Scrapling 基类
-│   │   ├── sources/                # 慢慢买搜索（42 关键词）
-│   │   ├── pipeline/writer.py      # 品牌标准化 + 六维评分
-│   │   ├── bg_service.py           # 定时爬虫（30 分钟间隔）
-│   │   └── scheduler.py            # 全品类调度（5 页/关键词）
-│   ├── requirements.txt
-│   └── shopcompare.db              # SQLite 数据库
-│
-├── entry/src/main/ets/
-│   ├── pages/                      # 14 个页面
-│   │   ├── SplashPage.ets          # 启动页（探测后端 + 切换数据源）
-│   │   ├── HomePage.ets            # 4 Tab 主页
-│   │   ├── SearchPage.ets          # 搜索页（API+本地降级）
-│   │   ├── CategoryFilterPage.ets  # 筛选页（品牌+价格）
-│   │   ├── CompareResultPage.ets   # 比价结果列表
-│   │   ├── CompareTablePage.ets    # 横向对比表
-│   │   ├── ProductDetailPage.ets   # 商品详情 + 雷达图
-│   │   ├── LoginPage.ets           # 登录
-│   │   ├── RegisterPage.ets        # 注册
-│   │   └── ...                     # 其他
-│   ├── components/                 # 组件
-│   │   ├── home/                   # 首页子组件（Discover/Favorites/Home/Profile）
-│   │   ├── search/                 # 搜索子组件
-│   │   ├── filter/                 # 筛选子组件
-│   │   └── ...                     # 雷达图/推荐卡片等
-│   ├── data/                       # 数据层
-│   │   ├── DataProvider.ets        # 远程/本地自动切换
-│   │   ├── MockData.ets            # 离线种子数据
-│   │   └── repository/             # ProductRepository 接口 + Remote/Mock 实现
-│   ├── models/                     # 数据模型
-│   └── utils/                      # 推荐引擎/偏好管理/HTTP 客户端
-│
-└── tests/
-    ├── run_full_test.py            # 29 用例集成测试
-    ├── test_user_flow.py           # 用户路径复刻测试
-    └── test_crawler_pipeline.py    # 爬虫管线端到端测试
+```powershell
+cd D:\huawei_code\project\shopcompare_codex\backend
+pip install -r requirements.txt
+python -m app.init_db
 ```
 
----
+可选：
 
-## 数据流
-
+```powershell
+python -m app.init_db user
+python -m app.init_db demo
 ```
-用户操作 App
-    │
-    ▼
-DataProvider.getProductRepository()
-    │
-    ├── SplashPage 探测后端 /products?size=1 → 200
-    │       │
-    │       ├── 成功 → RemoteProductRepository (700+ 件爬虫数据)
-    │       └── 失败 → MockProductRepository (30 件种子数据)
-    │
-    ▼
-页面使用 DataProvider 获取数据
-    ├── 首页: 推荐/分类/发现
-    ├── 搜索: /search?q=华为
-    ├── 筛选: /filters?category=手机数码
-    └── 详情: /products/{id}
-```
-
----
-
-## API 接口
-
-### 商品
-
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/products?size=100&sort=newest` | GET | 商品列表（默认最新排序，爬虫数据优先） |
-| `/products/{id}` | GET | 商品详情（含平台报价+价格历史） |
-| `/products/{id}/prices` | GET | 各平台价格 |
-| `/products/{id}/history` | GET | 价格历史 |
-| `/products/{id}/similar` | GET | 相似商品 |
-| `/products/{id}/dimensions` | GET | 六维雷达图 |
-| `/categories` | GET | 6 个品类列表 |
-| `/search?q=关键词` | GET | 全文搜索 |
-| `/filters?category=品类` | GET | 动态筛选选项（品牌+价格区间） |
-
-### 认证 & 收藏
-
-| 端点 | 方法 | 认证 |
-|------|------|:--:|
-| `/auth/register` | POST | — |
-| `/auth/login` | POST | — |
-| `/auth/send-code` | POST | — |
-| `/favorites` | GET/POST/DELETE | JWT |
-| `/alerts` | GET/POST/DELETE | JWT |
-
-### 系统
-
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/health` | GET | 健康检查 |
-| `/api/v1/crawler/status` | GET | 爬虫运行状态 |
-| `/api/v1/crawler/run` | POST | 手动触发爬虫 |
-| `/docs` | GET | Swagger UI |
-
----
 
 ## 爬虫
 
-### 运行机制
+后端启动时，如果没有设置 `SHOPCOMPARE_DISABLE_CRAWLER=1` 且爬虫依赖可用，会随 FastAPI 生命周期启动后台爬虫，并在启动后延迟触发一次采集。
 
-- 服务器启动 3 秒后，18 个基础关键词 × 1 页 首次采集
-- 定时任务每 30 分钟按 **42 个关键词 × 5 页** 全量刷新
-- 首次采集约 2-3 分钟完成（取决于网络）
-
-### 数据源
-
-- 来源：`s.manmanbuy.com`（慢慢买，真实电商折扣聚合平台）
-- 提取字段：商品名 / 品牌 / 品类 / 价格 / 图片 / 平台 / 评价数
-- 品牌标准化：Huawei→华为、Dyson→戴森 等中英映射
-- 六维评分：外观/物流/售后/品牌/性价比/品质 加权合成
-
-### 关键词覆盖（42 个）
-
-```
-手机 耳机 平板 笔记本电脑 鼠标 显示器
-空调 冰箱 吸尘器 精华 面霜 防晒
-运动鞋 T恤 双肩包 牛奶 坚果 茶叶
-充电宝 蓝牙音箱 智能手表 手机壳
-打印机 U盘 路由器 投影仪
-电饭煲 热水器 微波炉 扫地机器人
-面膜 粉底液 眼霜 洗面奶
-牛仔裤 羽绒服 连衣裙 睡衣
-巧克力 咖啡 饼干 红酒
-```
-
----
-
-## 测试
+常用接口：
 
 ```powershell
-# 29 用例集成测试（模拟完整用户行为）
-cd tests && python run_full_test.py
-
-# 爬虫管线端到端测试（79 用例）
-cd tests && python test_crawler_pipeline.py
-
-# 用户路径复刻测试（启动→首页→搜索→发现）
-cd tests && python test_user_flow.py
+curl http://localhost:8000/api/v1/crawler/status
+curl -X POST http://localhost:8000/api/v1/crawler/run
 ```
 
----
+搜索结果过少时，`/api/v1/search?q=关键词` 会把关键词加入后台爬虫队列。爬虫写入商品时会：
 
-## 技术栈
+- 从商品标题匹配本地品牌别名，统一中英文商标。
+- 使用规范标题 + 规范品牌 + 类目匹配已有商品，减少重复入库。
+- 刷新平台报价、历史价格和 0-5 分综合评分。
 
-| 层级 | 技术 |
-|------|------|
-| 前端 | HarmonyOS ArkTS + ArkUI (API 24) |
-| 后端 | Python FastAPI + SQLAlchemy |
-| 数据库 | SQLite |
-| 爬虫 | Scrapling + BeautifulSoup4 + Playwright |
-| 认证 | JWT + bcrypt |
-| 构建 | DevEco Studio + hvigor |
+## API 摘要
 
----
+| Endpoint | 方法 | 说明 |
+|---|---:|---|
+| `/health` | GET | 健康检查 |
+| `/api/v1/products` | GET | 商品列表，支持 `category_id/sub_category_id/brand/min_price/max_price/sort` |
+| `/api/v1/products/{id}` | GET | 商品详情，综合评分为 0-5 分 |
+| `/api/v1/products/{id}/prices` | GET | 平台报价 |
+| `/api/v1/products/{id}/history` | GET | 价格历史 |
+| `/api/v1/products/{id}/dimensions` | GET | 六维商品画像 |
+| `/api/v1/categories` | GET | 一级类目与二级类目 |
+| `/api/v1/filters` | GET | 品牌、价格区间、二级类目筛选项 |
+| `/api/v1/search?q=...` | GET | 搜索商品并在低结果时入队爬虫 |
+| `/api/v1/search/keywords` | GET | 快捷搜索关键词 |
+| `/api/v1/recommendations` | GET | 推荐商品 |
+| `/api/v1/hot-products` | GET | 热门商品 |
+| `/api/v1/crawler/status` | GET | 爬虫状态 |
+| `/api/v1/crawler/run` | POST | 手动触发爬虫 |
+| `/api/v1/admin` | GET | 数据管理后台页面 |
+| `/api/v1/admin/products` | GET/POST | 后台商品查询和新增 |
+| `/api/v1/admin/products/{id}` | GET/PUT/DELETE | 后台商品详情、更新和删除 |
+| `/api/v1/admin/products/{id}/listings` | POST | 新增平台报价 |
+| `/api/v1/admin/listings/{id}` | PUT/DELETE | 更新或删除平台报价 |
 
-## 常见问题
+示例：
 
-**Q: 后端启动后 App 还是 Mock 数据？**
-A: 检查 3 点：① `module.json5` 确认有 `ohos.permission.INTERNET` ② 后端 `python -m uvicorn` 跑在 8000 端口 ③ 不要加 `SHOPCOMPARE_DISABLE_CRAWLER=1`
+```powershell
+curl "http://localhost:8000/api/v1/products?category_id=cat1&sub_category_id=sub1&brand=Huawei&min_price=1000&max_price=8000&sort=price_low"
+curl "http://localhost:8000/api/v1/filters?category_id=cat1"
+curl "http://localhost:8000/api/v1/search?q=荣耀"
+```
 
-**Q: 搜索闪退？**
-A: v0.3 最后一次提交已修复。确保拉取最新代码重新编译。
+## 项目结构
 
-**Q: 商品没有图片？**
-A: 爬虫数据 99% 有图片 URL（来自京东/天猫/拼多多 CDN）。如果全部无图，检查 INTERNET 权限是否已声明。
+```text
+backend/
+  app/
+    brand_catalog.py        # 品牌别名归一与商品去重
+    category_catalog.py     # 一级/二级类目目录
+    product_scoring.py      # 六维图与 0-5 综合评分
+    routers/                # FastAPI 路由
+    models/                 # SQLAlchemy 模型
+    schemas/                # Pydantic 响应模型
+  crawler/
+    sources/                # 爬虫数据源
+    pipeline/writer.py      # 爬虫写库、品牌识别、评分刷新
+    bg_service.py           # 后台爬虫队列
+    scheduler.py            # 定时采集
 
-**Q: 怎么判断是爬虫数据还是种子数据？**
-A: 种子数据 ID 以 `demo_` 开头，共 30 件。爬虫数据 ID 是 UUID 格式，商品名带 `【京东/天猫/拼多多】` 前缀。
+entry/src/main/ets/
+  pages/
+    SearchPage.ets
+    CategoryFilterPage.ets
+    CompareResultPage.ets
+    ProductDetailPage.ets   # 商品详情、复制商品链接
+  data/repository/
+    ProductRepository.ets
+    RemoteProductRepository.ets
+  utils/
+    ProductDimensionScorer.ets
+    PreferenceManager.ets
+```
 
-**Q: 怎么触发重新爬取？**
-A: `POST http://localhost:8000/api/v1/crawler/run` 或重启后端。
+## 验证命令
 
----
+```powershell
+python -m pytest backend\tests -q
+
+$env:DEVECO_SDK_HOME='D:\huawei_code\DevEco Studio\sdk'
+& 'D:\huawei_code\DevEco Studio\tools\node\node.exe' 'D:\huawei_code\DevEco Studio\tools\hvigor\bin\hvigorw.js' assembleApp --no-daemon
+```
+
+最近一次验证结果：
+
+- 后端：`57 passed`
+- 新增后台 CRUD 后端验证：`60 passed`
+- 前端：`BUILD SUCCESSFUL`
 
 ## 环境变量
 
 | 变量 | 说明 |
-|------|------|
-| `SHOPCOMPARE_DISABLE_CRAWLER=1` | 禁用爬虫（仅用种子数据） |
-| `SHOPCOMPARE_ENABLE_DEMO_SEED=1` | 显式启用演示种子（v0.3 已默认启用） |
+|---|---|
+| `SHOPCOMPARE_DISABLE_CRAWLER=1` | 禁用后台爬虫 |
+| `SHOPCOMPARE_ENABLE_DEMO_SEED=1` | 显式启用 demo seed |
 
----
+## 常见问题
 
-<p align="center">
-  <b>ShopCompare v0.3</b><br>
-  <sub>Powered by HarmonyOS · Built with ArkTS + FastAPI</sub>
-</p>
+**后端启动报 `No module named 'app'`**
+
+从项目根目录运行 `python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000`，或者进入 `backend` 目录后运行 `python -m uvicorn app.main:app --host 0.0.0.0 --port 8000`。
+
+**为什么启动 App 后爬虫没有启动**
+
+先确认后端已经启动；App 本身不会启动 Python 爬虫。爬虫随 FastAPI 后端生命周期启动，并受 `SHOPCOMPARE_DISABLE_CRAWLER` 和爬虫依赖是否安装影响。
+
+**为什么筛选“华为”会混入 OPPO 或 Apple**
+
+已通过标题品牌识别修复。接口会按本地品牌别名目录推断规范品牌，再执行品牌过滤。
+
+**为什么搜索或筛选会出现重复商品**
+
+接口返回前会使用规范品牌 + 类目 + 规范标题去重；新爬取商品写库时也会尽量合并到已有商品。

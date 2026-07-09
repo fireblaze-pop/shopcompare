@@ -1,5 +1,3 @@
-import math
-
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -13,26 +11,9 @@ from app.category_catalog import (
 )
 from app.database import get_db
 from app.models.models import PlatformListing, Product
+from app.product_scoring import BRAND_REPUTATION, compute_dimensions
 
 router = APIRouter()
-
-BRAND_REPUTATION: dict[str, int] = {
-    'Apple': 95, '\u534E\u4E3A': 92, 'Huawei': 92,
-    'Xiaomi': 84, '\u5C0F\u7C73': 84,
-    'OPPO': 78,
-    'vivo': 76,
-    'Samsung': 85, '\u4E09\u661F': 85,
-    'Lenovo': 82, '\u8054\u60F3': 82,
-    'Dell': 80, '\u6234\u5C14': 80,
-    'Midea': 80, '\u7F8E\u7684': 80,
-    'Gree': 83, '\u683C\u529B': 83,
-    'Haier': 82, '\u6D77\u5C14': 82,
-    'Nike': 86,
-    'Adidas': 82,
-    '\u6234\u68EE': 88, 'Dyson': 88,
-    '\u5170\u853B': 90, 'Lancome': 90,
-    '\u8305\u53F0': 95,
-}
 
 PRICE_BINS: list[tuple[str, int, int]] = [
     ('1-100', 1, 100),
@@ -79,32 +60,8 @@ def get_product_dimensions(product_id: str, db: Session = Depends(get_db)):
         return {'dimensions': []}
 
     products = db.query(Product).filter(Product.category == product.category).all()
-    prices = [p.lowest_price for p in products if p.lowest_price > 0]
-    pmin = min(prices) if prices else 0
-    pmax = max(prices) if prices else 1
-    pct = (product.lowest_price - pmin) / (pmax - pmin + 0.01)
-
     listings = db.query(PlatformListing).filter(PlatformListing.product_id == product_id).all()
-    in_stock_count = sum(1 for item in listings if item.in_stock)
-    stock_rate = in_stock_count / max(len(listings), 1)
-    normalized_brand = infer_brand_from_title(product.name or '', product.brand or '')
-    brand_score = BRAND_REPUTATION.get(normalized_brand, 70)
-    rating = product.aggregate_rating if product.aggregate_rating > 0 else 4.0
-    review_count = max(product.total_review_count, 1)
-
-    cost_perf = round(min(100, max(0, (100 - pct * 50) * (product.aggregate_score / 10))))
-    quality = round(min(100, max(0, rating * 20 * (0.7 + 0.3 * min(1, math.log10(review_count + 1) / 4)))))
-    after_sales = round(min(100, max(0, brand_score * 0.6 + stock_rate * 100 * 0.4)))
-    appearance = round(min(100, max(0, rating * 16 + min(28, math.log(review_count + 1) * 4))))
-
-    return {'dimensions': [
-        {'label': 'cost', 'value': cost_perf},
-        {'label': 'quality', 'value': quality},
-        {'label': 'brand', 'value': brand_score},
-        {'label': 'after_sales', 'value': after_sales},
-        {'label': 'logistics', 'value': round(stock_rate * 100)},
-        {'label': 'appearance', 'value': appearance},
-    ]}
+    return {'dimensions': compute_dimensions(product, products, listings)}
 
 
 @router.get('/filters')

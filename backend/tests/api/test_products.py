@@ -171,6 +171,19 @@ def test_get_product_detail(client):
     assert data['name'] == 'iPhone 16 Pro Max'
     assert len(data['platform_listings']) > 0
     assert len(data['price_history']) > 0
+    assert 0 <= data['aggregate_score'] <= 5
+    assert data['aggregate_rating'] == data['aggregate_score']
+
+
+def test_get_product_dimensions_are_category_weighted(client):
+    resp = client.get('/api/v1/products/p1/dimensions')
+    assert resp.status_code == 200
+    data = resp.json()
+    dimensions = data['dimensions']
+    assert len(dimensions) == 6
+    values = [item['value'] for item in dimensions]
+    assert all(0 <= value <= 100 for value in values)
+    assert max(values) - min(values) >= 8
 
 
 def test_get_generated_product_detail_for_sparse_crawled_product(client, db_session):
