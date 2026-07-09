@@ -17,6 +17,7 @@ from app.category_catalog import (
 )
 from app.database import get_db
 from app.models.models import PlatformListing, PriceHistory, Product
+from app.product_scoring import compute_overall_score
 from app.schemas.product import ProductDetailResponse, ProductListResponse, ProductResponse
 
 router = APIRouter()
@@ -213,6 +214,8 @@ def get_product_detail(product_id: str, db: Session = Depends(get_db)):
     listings = _detail_listings(product)
     history = _detail_history(product)
     tags = _detail_tags(product, listings)
+    category_products = db.query(Product).filter(Product.category == product.category).all()
+    overall_score = compute_overall_score(product, category_products, product.listings or [])
 
     return ProductDetailResponse(
         id=product.id,
@@ -226,8 +229,8 @@ def get_product_detail(product_id: str, db: Session = Depends(get_db)):
         highest_price=product.highest_price,
         price_spread=product.price_spread,
         historical_low=product.historical_low,
-        aggregate_rating=product.aggregate_rating,
-        aggregate_score=product.aggregate_score,
+        aggregate_rating=overall_score,
+        aggregate_score=overall_score,
         total_review_count=product.total_review_count,
         platform_count=len(product.listings),
         publish_date=product.publish_date,

@@ -1,5 +1,6 @@
 import { router } from '@kit.ArkUI';
 import { promptAction } from '@kit.ArkUI';
+import { pasteboard } from '@kit.BasicServicesKit';
 import { Product, PlatformListing, PricePoint, ReviewTag } from '../models/DataModels';
 import { PreferenceManager } from '../utils/PreferenceManager';
 import { NavParams } from '../utils/PreferenceManager';
@@ -70,6 +71,9 @@ struct ProductDetailPage {
       i = i + 1;
     }
     this.radarDimensions = ProductDimensionScorer.score(this.product!, meta, repo);
+    let overallScore: number = ProductDimensionScorer.overallScore(this.product!, meta, repo);
+    this.product!.aggregateScore = overallScore;
+    this.product!.aggregateRating = overallScore;
   }
 
   loadSimilarProducts(productId: string): void {
@@ -111,6 +115,42 @@ struct ProductDetailPage {
     } else {
       PreferenceManager.removeFavorite(this.product!.id);
       promptAction.showToast({ message: '已取消收藏' });
+    }
+  }
+
+  getPrimaryProductUrl(): string {
+    if (this.product === undefined) {
+      return '';
+    }
+    let selectedUrl: string = '';
+    let selectedPrice: number = 0;
+    let i: number = 0;
+    while (i < this.product!.platformListings.length) {
+      let listing: PlatformListing = this.product!.platformListings[i];
+      if (listing.url.length > 0) {
+        if (selectedUrl.length === 0 || listing.price < selectedPrice) {
+          selectedUrl = listing.url;
+          selectedPrice = listing.price;
+        }
+      }
+      i = i + 1;
+    }
+    return selectedUrl;
+  }
+
+  async copyProductLink(): Promise<void> {
+    let url: string = this.getPrimaryProductUrl();
+    if (url.length === 0) {
+      promptAction.showToast({ message: '暂无可复制的商品链接' });
+      return;
+    }
+    try {
+      let data: pasteboard.PasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, url);
+      let systemPasteboard: pasteboard.SystemPasteboard = pasteboard.getSystemPasteboard();
+      await systemPasteboard.setData(data);
+      promptAction.showToast({ message: '商品链接已复制到剪贴板' });
+    } catch (e) {
+      promptAction.showToast({ message: '复制失败，请稍后重试' });
     }
   }
 
@@ -1144,9 +1184,7 @@ struct ProductDetailPage {
               .layoutWeight(1)
               .height(50)
               .onClick(() => {
-                promptAction.showToast({
-                  message: '跳转至商品详情'
-                });
+                this.copyProductLink();
               })
 
             Button(
