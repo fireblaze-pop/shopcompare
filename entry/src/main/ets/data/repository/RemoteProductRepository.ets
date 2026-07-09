@@ -262,10 +262,10 @@ export class RemoteProductRepository implements ProductRepository {
     }
     let path: string = '/products?size=100&sort=' + sortParam
     if (category.length > 0) {
-      path = path + '&category=' + encodeURIComponent(category)
+      path = path + '&category=' + category
     }
     if (brands.length > 0) {
-      path = path + '&brand=' + encodeURIComponent(brands)
+      path = path + '&brand=' + brands
     }
     let response = await this.client.get(path)
     if (response.statusCode === 200) {
@@ -315,6 +315,6 @@ export class RemoteProductRepository implements ProductRepository {
   }
 
   clearFilter(): void {
-    this.loadProducts()
+    this.productCache = []
   }
 }
