@@ -87,7 +87,7 @@ export struct ProductCompareTable {
                   })
 
                   Row() {
-                    Text(product.platformListings.length.toString() + ' \u4E2A\u5E73\u53F0')
+                    Text(product.platformCount.toString() + ' \u4E2A\u5E73\u53F0')
                       .fontSize(13)
                       .fontColor('#1C1C1E')
                   }

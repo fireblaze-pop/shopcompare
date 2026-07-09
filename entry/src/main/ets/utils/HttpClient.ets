@@ -12,7 +12,7 @@ interface RequestConfig {
   headers?: Record<string, string>
 }
 
-const BASE_URL: string = 'http://10.0.2.2:8000/api/v1'
+const BASE_URL: string = 'http://localhost:8000/api/v1'
 const TIMEOUT: number = 15000
 
 export class HttpClient {

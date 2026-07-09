@@ -99,6 +99,7 @@ function jsonToProduct(json: ProductJson): Product {
     aggregateRating: safeNum(json.aggregate_rating),
     totalReviewCount: safeNum(json.total_review_count),
     platformListings: [],
+    platformCount: safeNum(json.platform_count),
     lowestPrice: safeNum(json.lowest_price),
     priceSpread: safeNum(json.price_spread),
     historicalLow: safeNum(json.historical_low),
@@ -114,9 +115,13 @@ function jsonToProductDetail(json: ProductDetailJson): Product {
   let product: Product = jsonToProduct(json)
 
   let listings: PlatformListing[] = []
+  let sourceListings: PlatformListingJson[] = []
+  if (json.platform_listings !== undefined && json.platform_listings !== null) {
+    sourceListings = json.platform_listings
+  }
   let i: number = 0
-  while (i < json.platform_listings.length) {
-    let pl: PlatformListingJson = json.platform_listings[i]
+  while (i < sourceListings.length) {
+    let pl: PlatformListingJson = sourceListings[i]
     listings.push({
       platform: pl.platform,
       price: pl.price,
@@ -128,36 +133,60 @@ function jsonToProductDetail(json: ProductDetailJson): Product {
     i = i + 1
   }
   product.platformListings = listings
+  if (product.platformCount <= 0 && listings.length > 0) {
+    product.platformCount = listings.length
+  }
 
   let history: PricePoint[] = []
+  let sourceHistory: PricePointJson[] = []
+  if (json.price_history !== undefined && json.price_history !== null) {
+    sourceHistory = json.price_history
+  }
   let h: number = 0
-  while (h < json.price_history.length) {
+  while (h < sourceHistory.length) {
     history.push({
-      date: json.price_history[h].date,
-      price: json.price_history[h].price
+      date: safeStr(sourceHistory[h].date),
+      price: safeNum(sourceHistory[h].price)
     })
     h = h + 1
   }
+  history.sort((a: PricePoint, b: PricePoint): number => {
+    if (a.date < b.date) {
+      return -1
+    }
+    if (a.date > b.date) {
+      return 1
+    }
+    return 0
+  })
   product.priceHistory = history
 
   let tags: ReviewTag[] = []
+  let sourceTags: ReviewTagJson[] = []
+  if (json.review_tags !== undefined && json.review_tags !== null) {
+    sourceTags = json.review_tags
+  }
   let t: number = 0
-  while (t < json.review_tags.length) {
+  while (t < sourceTags.length) {
     tags.push({
-      text: json.review_tags[t].text,
-      type: json.review_tags[t].type,
-      count: json.review_tags[t].count
+      text: safeStr(sourceTags[t].text),
+      type: safeNum(sourceTags[t].type),
+      count: safeNum(sourceTags[t].count)
     })
     t = t + 1
   }
   product.reviewTags = tags
 
   let specs: ProductSpec[] = []
+  let sourceSpecs: ProductSpecJson[] = []
+  if (json.specs !== undefined && json.specs !== null) {
+    sourceSpecs = json.specs
+  }
   let s: number = 0
-  while (s < json.specs.length) {
+  while (s < sourceSpecs.length) {
     specs.push({
-      key: json.specs[s].key,
-      value: json.specs[s].value
+      key: safeStr(sourceSpecs[s].key),
+      value: safeStr(sourceSpecs[s].value)
     })
     s = s + 1
   }

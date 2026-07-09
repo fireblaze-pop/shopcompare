@@ -293,30 +293,17 @@ struct CompareResultPage {
   }
 
   getPlatformCount(): number {
-    let platformNames: string[] = []
+    let maxCount: number = 0
     let i: number = 0
 
     while (i < this.products.length) {
-      let j: number = 0
-
-      while (
-        j <
-        this.products[i].platformListings.length
-      ) {
-        let name: string =
-          this.products[i].platformListings[j].platform
-
-        if (platformNames.indexOf(name) < 0) {
-          platformNames.push(name)
-        }
-
-        j = j + 1
+      if (this.products[i].platformCount > maxCount) {
+        maxCount = this.products[i].platformCount
       }
-
       i = i + 1
     }
 
-    return platformNames.length
+    return maxCount
   }
 
   getSelectedFilterLabels(): string[] {
@@ -428,7 +415,7 @@ struct CompareResultPage {
       Text(
         '找到 ' +
         this.products.length.toString() +
-        ' 件商品 · 覆盖 ' +
+        ' 件商品 · 单品最多覆盖 ' +
         this.getPlatformCount().toString() +
         ' 个平台'
       )

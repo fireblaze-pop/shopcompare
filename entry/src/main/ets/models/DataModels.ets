@@ -35,6 +35,7 @@ export interface Product {
   aggregateRating: number;
   totalReviewCount: number;
   platformListings: PlatformListing[];
+  platformCount: number;
   lowestPrice: number;
   priceSpread: number;
   historicalLow: number;

@@ -43,6 +43,7 @@ function createProduct(
     aggregateRating: aggregateRating,
     totalReviewCount: totalReviewCount,
     platformListings: platforms,
+    platformCount: platforms.length,
     lowestPrice: lowestPrice,
     priceSpread: priceSpread,
     historicalLow: historicalLow,

@@ -16,6 +16,7 @@ interface SearchApiItem {
   category: string
   lowest_price: number
   image_url: string
+  platform_count: number
 }
 
 interface SearchResult {
@@ -70,6 +71,7 @@ struct SearchPage {
             aggregateRating: 0,
             totalReviewCount: 0,
             platformListings: [],
+            platformCount: item.platform_count !== undefined && item.platform_count !== null ? item.platform_count : 0,
             lowestPrice: item.lowest_price,
             priceSpread: 0,
             historicalLow: 0,

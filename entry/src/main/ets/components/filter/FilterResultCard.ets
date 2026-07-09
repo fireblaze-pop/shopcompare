@@ -14,6 +14,7 @@ function emptyProduct(): Product {
     aggregateRating: 0,
     totalReviewCount: 0,
     platformListings: [],
+    platformCount: 0,
     lowestPrice: 0,
     priceSpread: 0,
     historicalLow: 0,
@@ -133,7 +134,7 @@ export struct FilterResultCard {
           Blank()
 
           Text(
-            this.product.platformListings.length.toString() +
+            this.product.platformCount.toString() +
             ' 个平台在售'
           )
             .fontSize(11)

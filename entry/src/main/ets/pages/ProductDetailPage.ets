@@ -35,22 +35,34 @@ struct ProductDetailPage {
     this.loadProductData(productId);
   }
 
-  loadProductData(productId: string): void {
+  async loadProductData(productId: string): Promise<void> {
     this.isLoading = true;
-    setTimeout(() => {
-      let repo = DataProvider.getProductRepository();
-      let product: Product | undefined = repo.getProductById(productId);
-      if (product !== undefined) {
-        this.product = product;
-        this.sortPlatformListings(true);
-        this.isFavorited = PreferenceManager.isFavorite(productId);
-        this.computeReviewTags();
-        this.computeRadarDimensions();
-        this.loadSimilarProducts(productId);
-        BehaviorManager.getInstance().recordView(productId);
-      }
-      this.isLoading = false;
-    }, 500);
+    this.product = undefined;
+
+    let repo = DataProvider.getProductRepository();
+    let product: Product | undefined = undefined;
+
+    try {
+      product = await repo.loadProductDetail(productId);
+    } catch (e) {
+      product = undefined;
+    }
+
+    if (product === undefined) {
+      product = repo.getProductById(productId);
+    }
+
+    if (product !== undefined) {
+      this.product = product;
+      this.sortPlatformListings(true);
+      this.isFavorited = PreferenceManager.isFavorite(productId);
+      this.computeReviewTags();
+      this.computeRadarDimensions();
+      this.loadSimilarProducts(productId);
+      BehaviorManager.getInstance().recordView(productId);
+    }
+
+    this.isLoading = false;
   }
 
   computeRadarDimensions(): void {
@@ -149,6 +161,68 @@ struct ProductDetailPage {
       i = i + 1;
     }
     return highest;
+  }
+
+  getHistoryMinPrice(): number {
+    if (this.product === undefined || this.product!.priceHistory.length === 0) {
+      return 0;
+    }
+
+    let minPrice: number = this.product!.priceHistory[0].price;
+    let i: number = 1;
+    while (i < this.product!.priceHistory.length) {
+      if (this.product!.priceHistory[i].price < minPrice) {
+        minPrice = this.product!.priceHistory[i].price;
+      }
+      i = i + 1;
+    }
+    return minPrice;
+  }
+
+  getHistoryMaxPrice(): number {
+    if (this.product === undefined || this.product!.priceHistory.length === 0) {
+      return 0;
+    }
+
+    let maxPrice: number = this.product!.priceHistory[0].price;
+    let i: number = 1;
+    while (i < this.product!.priceHistory.length) {
+      if (this.product!.priceHistory[i].price > maxPrice) {
+        maxPrice = this.product!.priceHistory[i].price;
+      }
+      i = i + 1;
+    }
+    return maxPrice;
+  }
+
+  getHistoryBarHeight(price: number): number {
+    let minPrice: number = this.getHistoryMinPrice();
+    let maxPrice: number = this.getHistoryMaxPrice();
+
+    if (maxPrice <= minPrice) {
+      return 74;
+    }
+
+    let ratio: number = (price - minPrice) / (maxPrice - minPrice);
+    if (ratio < 0) {
+      ratio = 0;
+    }
+    if (ratio > 1) {
+      ratio = 1;
+    }
+
+    return 42 + ratio * 78;
+  }
+
+  isHistoryLowest(price: number): boolean {
+    return price === this.getHistoryMinPrice();
+  }
+
+  getHistoryDateLabel(date: string): string {
+    if (date.length > 5) {
+      return date.substring(5);
+    }
+    return date;
   }
 
   getCategoryEmoji(product: Product | undefined): string {
@@ -569,65 +643,84 @@ struct ProductDetailPage {
     Column() {
       this.buildSectionHeader(
         '价格走势',
-        '近30天价格变化'
+        '按历史价格记录展示'
       )
 
-      Row() {
-        if (this.product!.priceHistory.length === 0) {
-          Column({ space: 8 }) {
-            Text('暂无价格数据')
-              .fontSize(14)
-              .fontColor('#8E8E93')
+      if (this.product!.priceHistory.length === 0) {
+        Column({ space: 8 }) {
+          Text('暂无价格数据')
+            .fontSize(14)
+            .fontColor('#8E8E93')
 
-            Text('有新的价格记录后会显示在这里')
-              .fontSize(12)
-              .fontColor('#B0B3BA')
-          }
-          .width('100%')
-          .height(130)
-          .justifyContent(FlexAlign.Center)
-          .alignItems(HorizontalAlign.Center)
-        } else {
-          ForEach(
-            this.product!.priceHistory,
-            (point: PricePoint, pidx: number) => {
-              Column() {
-                Text(formatPriceBrief(point.price))
-                  .fontSize(10)
-                  .fontColor('#7C7F87')
-                  .margin({ bottom: 6 })
-
-                Column()
-                  .width(24)
-                  .height(60 + pidx * 10)
-                  .backgroundColor(
-                    pidx === 2 ?
-                    '#FF6B61' :
-                    '#7A89F2'
-                  )
-                  .borderRadius({
-                    topLeft: 5,
-                    topRight: 5,
-                    bottomLeft: 2,
-                    bottomRight: 2
-                  })
-
-                Text(point.date.substring(5))
-                  .fontSize(9)
-                  .fontColor('#A8ABB2')
-                  .margin({ top: 6 })
-              }
-              .alignItems(HorizontalAlign.Center)
-              .margin({ right: 12 })
-            }
-          )
+          Text('有新的价格记录后会显示在这里')
+            .fontSize(12)
+            .fontColor('#B0B3BA')
         }
+        .width('100%')
+        .height(130)
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+      } else {
+        if (this.product!.priceHistory.length === 1) {
+          Text('当前仅 1 条历史价格记录，暂无可比较走势')
+            .fontSize(12)
+            .fontColor('#8E8E93')
+            .width('100%')
+            .margin({ bottom: 8 })
+        }
+
+        Scroll() {
+          Row() {
+            ForEach(
+              this.product!.priceHistory,
+              (point: PricePoint, pidx: number) => {
+                Column() {
+                  Text(formatPriceBrief(point.price))
+                    .fontSize(10)
+                    .fontColor(
+                      this.isHistoryLowest(point.price) ?
+                      '#FF3B30' :
+                      '#7C7F87'
+                    )
+                    .margin({ bottom: 6 })
+
+                  Column()
+                    .width(24)
+                    .height(this.getHistoryBarHeight(point.price))
+                    .backgroundColor(
+                      this.isHistoryLowest(point.price) ?
+                      '#FF6B61' :
+                      '#7A89F2'
+                    )
+                    .borderRadius({
+                      topLeft: 5,
+                      topRight: 5,
+                      bottomLeft: 2,
+                      bottomRight: 2
+                    })
+
+                  Text(this.getHistoryDateLabel(point.date))
+                    .fontSize(9)
+                    .fontColor('#A8ABB2')
+                    .margin({ top: 6 })
+                }
+                .alignItems(HorizontalAlign.Center)
+                .margin({ right: 12 })
+              },
+              (point: PricePoint, pidx: number): string => {
+                return point.date + '_' + pidx.toString();
+              }
+            )
+          }
+          .height(150)
+          .alignItems(VerticalAlign.Bottom)
+          .padding({ top: 8 })
+        }
+        .width('100%')
+        .height(150)
+        .scrollable(ScrollDirection.Horizontal)
+        .scrollBar(BarState.Off)
       }
-      .width('100%')
-      .height(150)
-      .justifyContent(FlexAlign.Start)
-      .alignItems(VerticalAlign.Bottom)
-      .padding({ top: 8 })
     }
     .width('100%')
     .padding(20)

@@ -1,8 +1,9 @@
 import { router } from '@kit.ArkUI';
 import { PreferenceManager } from '../utils/PreferenceManager';
-import { UserProfile, Category } from '../models/DataModels';
+import { UserProfile, Category, Product } from '../models/DataModels';
 import { BehaviorManager } from '../utils/BehaviorManager';
 import { RecommendationEngine } from '../utils/RecommendationEngine';
+import { DataProvider } from '../data/DataProvider';
 
 interface BudgetCard {
   id: string;
@@ -171,7 +172,7 @@ struct QuestionnairePage {
       };
       PreferenceManager.saveUserProfile(profile);
       PreferenceManager.setFirstLaunchDone();
-      let candidates = DataProvider.getProductRepository().getProducts();
+      let candidates: Product[] = DataProvider.getProductRepository().getProducts();
       BehaviorManager.getInstance().seedFromProfile(profile, candidates);
       RecommendationEngine.getInstance().refresh();
       router.replaceUrl({ url: 'pages/HomePage' });

@@ -10,6 +10,7 @@ export interface PriceStats {
 export interface ProductRepository {
   getProducts(): Product[]
   getProductById(id: string): Product | undefined
+  loadProductDetail(id: string): Promise<Product | undefined>
   getCategories(): Category[]
   getCategoryPriceStats(category: string): PriceStats
   getBrandReputation(brand: string): number
@@ -30,6 +31,10 @@ export class MockProductRepository implements ProductRepository {
       i = i + 1
     }
     return undefined
+  }
+
+  async loadProductDetail(id: string): Promise<Product | undefined> {
+    return this.getProductById(id)
   }
 
   getCategories(): Category[] {
