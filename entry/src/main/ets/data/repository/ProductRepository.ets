@@ -1,4 +1,4 @@
-import { Product, Category } from '../../models/DataModels'
+import { Product, Category, FilterSelection } from '../../models/DataModels'
 import { MockData } from '../MockData'
 
 export interface PriceStats {
@@ -16,7 +16,7 @@ export interface ProductRepository {
   loadProducts(): Promise<void>
   loadCategories(): Promise<void>
   loadProductDetail(id: string): Promise<Product | undefined>
-  loadFilteredProducts(category: string, brands: string, sort: string): Promise<void>
+  loadFilteredProducts(selection: FilterSelection): Promise<void>
 }
 
 export class MockProductRepository implements ProductRepository {
@@ -127,7 +127,7 @@ export class MockProductRepository implements ProductRepository {
     return this.getProductById(id)
   }
 
-  async loadFilteredProducts(category: string, brands: string, sort: string): Promise<void> {
+  async loadFilteredProducts(selection: FilterSelection): Promise<void> {
     let all: Product[] = MockData.getProducts()
     let filtered: Product[] = []
     let i: number = 0
@@ -136,16 +136,15 @@ export class MockProductRepository implements ProductRepository {
       let product: Product = all[i]
       let matches: boolean = true
 
-      if (category.length > 0 && product.category !== category) {
+      if (selection.categoryName.length > 0 && product.category !== selection.categoryName) {
         matches = false
       }
 
-      if (matches && brands.length > 0) {
-        let brandList: string[] = brands.split(',')
+      if (matches && selection.brands.length > 0) {
         let brandMatch: boolean = false
         let j: number = 0
-        while (j < brandList.length) {
-          if (product.brand === brandList[j]) {
+        while (j < selection.brands.length) {
+          if (product.brand === selection.brands[j]) {
             brandMatch = true
             break
           }
@@ -156,13 +155,21 @@ export class MockProductRepository implements ProductRepository {
         }
       }
 
+      if (matches && selection.minPrice > 0 && product.lowestPrice < selection.minPrice) {
+        matches = false
+      }
+
+      if (matches && selection.maxPrice > 0 && product.lowestPrice > selection.maxPrice) {
+        matches = false
+      }
+
       if (matches) {
         filtered.push(product)
       }
       i = i + 1
     }
 
-    if (sort === 'pricePriority') {
+    if (selection.sort === 'pricePriority') {
       let a: number = 0
       while (a < filtered.length) {
         let b: number = a + 1

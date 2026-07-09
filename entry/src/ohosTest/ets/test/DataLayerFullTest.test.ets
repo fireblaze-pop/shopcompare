@@ -4,12 +4,30 @@
  * Uses @ohos/hypium test framework.
  */
 import { describe, it, expect } from '@ohos/hypium'
-import { Product, Category, ProductSpec, PlatformListing, PricePoint, ReviewTag } from '../../../main/ets/models/DataModels'
+import { Product, Category, ProductSpec, PlatformListing, PricePoint, ReviewTag, FilterSelection } from '../../../main/ets/models/DataModels'
 import { MockProductRepository, ProductRepository, PriceStats } from '../../../main/ets/data/repository/ProductRepository'
 import { DataProvider } from '../../../main/ets/data/DataProvider'
 import { MockData } from '../../../main/ets/data/MockData'
 import { HttpClient } from '../../../main/ets/utils/HttpClient'
 import { ProductPlaceholder } from '../../../main/ets/components/ProductCard'
+
+function createFilterSelection(
+  categoryName: string,
+  brands: string[],
+  sort: string
+): FilterSelection {
+  return {
+    categoryId: '',
+    categoryName: categoryName,
+    subCategoryId: '',
+    subCategoryName: '',
+    brands: brands,
+    minPrice: 0,
+    maxPrice: 0,
+    priceLabel: '',
+    sort: sort
+  }
+}
 
 export default function dataLayerFullTest() {
 
@@ -116,7 +134,7 @@ export default function dataLayerFullTest() {
       let repo: MockProductRepository = new MockProductRepository()
       let result: boolean = false
       let checkFn = (): void => {
-        repo.loadFilteredProducts('\u624B\u673A\u6570\u7801', '', 'recommend').then(() => {
+        repo.loadFilteredProducts(createFilterSelection('\u624B\u673A\u6570\u7801', [], 'recommend')).then(() => {
           let filtered: Product[] = repo.getProducts()
           let allMatch: boolean = true
           let i: number = 0
@@ -139,7 +157,7 @@ export default function dataLayerFullTest() {
      */
     it('U7_loadFilteredProducts_filters_by_brand', 1, () => {
       let repo: MockProductRepository = new MockProductRepository()
-      repo.loadFilteredProducts('\u624B\u673A\u6570\u7801', 'Apple', 'recommend').then(() => {
+      repo.loadFilteredProducts(createFilterSelection('\u624B\u673A\u6570\u7801', ['Apple'], 'recommend')).then(() => {
         let filtered: Product[] = repo.getProducts()
         let allMatch: boolean = true
         let i: number = 0
@@ -159,7 +177,7 @@ export default function dataLayerFullTest() {
      */
     it('U8_loadFilteredProducts_cross_category_empty', 1, () => {
       let repo: MockProductRepository = new MockProductRepository()
-      repo.loadFilteredProducts('\u98DF\u54C1\u751F\u9C9C', 'Apple', 'recommend').then(() => {
+      repo.loadFilteredProducts(createFilterSelection('\u98DF\u54C1\u751F\u9C9C', ['Apple'], 'recommend')).then(() => {
         let filtered: Product[] = repo.getProducts()
         expect(filtered.length).assertEqual(0)
       })
@@ -244,7 +262,7 @@ export default function dataLayerFullTest() {
      */
     it('U15_loadFilteredProducts_sorts_by_price', 1, () => {
       let repo: MockProductRepository = new MockProductRepository()
-      repo.loadFilteredProducts('', '', 'pricePriority').then(() => {
+      repo.loadFilteredProducts(createFilterSelection('', [], 'pricePriority')).then(() => {
         let sorted: Product[] = repo.getProducts()
         let isAscending: boolean = true
         let i: number = 0

@@ -2,6 +2,7 @@ import os
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+from app.brand_catalog import dedupe_products
 from app.database import get_db
 from app.models.models import Product
 from app.schemas.product import ProductResponse
@@ -47,8 +48,10 @@ def search_products(
         (Product.description.contains(q))
     )
 
-    total = query.count()
-    items = query.offset((page - 1) * size).limit(size).all()
+    all_items = dedupe_products(query.all())
+    total = len(all_items)
+    start = (page - 1) * size
+    items = all_items[start:start + size]
     crawl_queued: bool = False
     if len(q.strip()) >= AUTO_CRAWL_MIN_QUERY_LENGTH and total < AUTO_CRAWL_RESULT_THRESHOLD:
         crawl_queued = enqueue_search_crawl(q)

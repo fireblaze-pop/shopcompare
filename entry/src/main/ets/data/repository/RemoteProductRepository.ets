@@ -1,4 +1,4 @@
-import { Product, Category, ProductSpec, PricePoint, ReviewTag, SubCategory, PlatformListing } from '../../models/DataModels'
+import { Product, Category, ProductSpec, PricePoint, ReviewTag, SubCategory, PlatformListing, FilterSelection } from '../../models/DataModels'
 import { ProductRepository, PriceStats } from './ProductRepository'
 import { HttpClient } from '../../utils/HttpClient'
 
@@ -253,19 +253,30 @@ export class RemoteProductRepository implements ProductRepository {
     return undefined
   }
 
-  async loadFilteredProducts(category: string, brands: string, sort: string): Promise<void> {
+  async loadFilteredProducts(selection: FilterSelection): Promise<void> {
     let sortParam: string = 'recommend'
-    if (sort === 'pricePriority') {
+    if (selection.sort === 'pricePriority') {
       sortParam = 'price_low'
-    } else if (sort === 'ratingPriority') {
+    } else if (selection.sort === 'ratingPriority') {
       sortParam = 'rating'
     }
     let path: string = '/products?size=100&sort=' + sortParam
-    if (category.length > 0) {
-      path = path + '&category=' + encodeURIComponent(category)
+    if (selection.categoryId.length > 0) {
+      path = path + '&category_id=' + encodeURIComponent(selection.categoryId)
+    } else if (selection.categoryName.length > 0) {
+      path = path + '&category=' + encodeURIComponent(selection.categoryName)
     }
-    if (brands.length > 0) {
-      path = path + '&brand=' + encodeURIComponent(brands)
+    if (selection.subCategoryId.length > 0) {
+      path = path + '&sub_category_id=' + encodeURIComponent(selection.subCategoryId)
+    }
+    if (selection.brands.length > 0) {
+      path = path + '&brand=' + encodeURIComponent(this.joinBrands(selection.brands))
+    }
+    if (selection.minPrice > 0) {
+      path = path + '&min_price=' + selection.minPrice.toString()
+    }
+    if (selection.maxPrice > 0) {
+      path = path + '&max_price=' + selection.maxPrice.toString()
     }
     let response = await this.client.get(path)
     if (response.statusCode === 200) {
@@ -278,6 +289,21 @@ export class RemoteProductRepository implements ProductRepository {
       }
       this.productCache = products
     }
+  }
+
+  private joinBrands(brands: string[]): string {
+    let result: string = ''
+    let i: number = 0
+    while (i < brands.length) {
+      if (brands[i].length > 0) {
+        if (result.length > 0) {
+          result = result + ','
+        }
+        result = result + brands[i]
+      }
+      i = i + 1
+    }
+    return result
   }
 
   getProducts(): Product[] {

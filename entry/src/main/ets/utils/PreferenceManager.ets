@@ -1,4 +1,4 @@
-import { UserProfile } from '../models/DataModels'
+import { FilterSelection, UserProfile } from '../models/DataModels'
 import { preferences } from '@kit.ArkData'
 
 const PREF_NAME: string = 'shopcompare_data'
@@ -183,6 +183,17 @@ export class NavParams {
   static productId: string = '';
   static categoryId: string = '';
   static categoryName: string = '';
+  static filterSelection: FilterSelection = {
+    categoryId: '',
+    categoryName: '',
+    subCategoryId: '',
+    subCategoryName: '',
+    brands: [],
+    minPrice: 0,
+    maxPrice: 0,
+    priceLabel: '',
+    sort: 'recommend'
+  };
   static selectedBrands: string = '';
   static selectedPriceLabel: string = '';
   static selectedOtherLabels: string = '';
