@@ -1,0 +1,13 @@
+{
+  "module": {
+    "name": "entry_test",
+    "type": "feature",
+    "srcEntry": "./ets/test/DataLayerFullTest.test.ets",
+    "description": "$string:ohosTest_desc",
+    "deviceTypes": [
+      "phone"
+    ],
+    "deliveryWithInstall": true,
+    "installationFree": false
+  }
+}

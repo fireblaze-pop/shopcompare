@@ -46,26 +46,50 @@ def normalize_brand(brand: str) -> str:
     return BRAND_ALIASES.get(brand, brand)
 
 
-def find_existing_product(db: Session, name: str, brand: str) -> Optional[Product]:
+def _extract_keywords(name: str, min_len: int = 2) -> list[str]:
+    cleaned: str = re.sub(r'[^\w\u4e00-\u9fff]', ' ', name)
+    parts: list[str] = cleaned.split()
+    keywords: list[str] = []
+    for p in parts:
+        if len(p) >= min_len:
+            keywords.append(p)
+    return keywords
+
+
+def find_existing_product(db: Session, name: str, brand: str, category: str) -> Optional[Product]:
     normalized: str = normalize_name(name)
     norm_brand: str = normalize_brand(brand)
+
     if len(norm_brand) > 0:
         product = db.query(Product).filter(
+            Product.category == category,
             Product.brand == norm_brand,
             Product.name.contains(normalized[:6])
         ).first()
         if product is not None:
             return product
+
     if len(brand) > 0:
         product = db.query(Product).filter(
+            Product.category == category,
             Product.brand == brand,
             Product.name.contains(normalized[:6])
         ).first()
         if product is not None:
             return product
 
+    keywords: list[str] = _extract_keywords(normalized)
+    if len(keywords) >= 2:
+        q = db.query(Product).filter(Product.category == category)
+        for kw in keywords[:3]:
+            q = q.filter(Product.name.contains(kw))
+        product = q.first()
+        if product is not None:
+            return product
+
     product = db.query(Product).filter(
-        Product.name == name
+        Product.category == category,
+        Product.name.contains(normalized[:4])
     ).first()
     return product
 
@@ -78,8 +102,9 @@ def save_raw_product(db: Session, raw: dict) -> Optional[str]:
     return None
 
   brand: str = normalize_brand(raw.get('brand', '') or guess_brand(raw.get('name', '')))
+  category: str = raw.get('category', '\u672A\u5206\u7C7B')
 
-  existing = find_existing_product(db, raw.get('name', ''), brand)
+  existing = find_existing_product(db, raw.get('name', ''), brand, category)
 
   if existing is not None:
     product = existing
@@ -88,7 +113,7 @@ def save_raw_product(db: Session, raw: dict) -> Optional[str]:
       id=str(uuid.uuid4())[:16],
       name=raw.get('name', ''),
       brand=brand,
-      category=raw.get('category', '手机数码'),
+      category=category,
       image_url=raw.get('image_url', ''),
       description=raw.get('name', '')[:100],
       lowest_price=price,

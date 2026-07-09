@@ -43,6 +43,10 @@ struct CategoryFilterPage {
   aboutToAppear(): void {
     this.categoryName = NavParams.categoryName
     this.categoryId = NavParams.categoryId
+    NavParams.selectedBrands = ''
+    NavParams.selectedPriceLabel = ''
+    NavParams.selectedOtherLabels = ''
+    this.selectedIds = []
     this.loadFilters()
   }
 

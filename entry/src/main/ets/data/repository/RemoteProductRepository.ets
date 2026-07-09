@@ -253,6 +253,33 @@ export class RemoteProductRepository implements ProductRepository {
     return undefined
   }
 
+  async loadFilteredProducts(category: string, brands: string, sort: string): Promise<void> {
+    let sortParam: string = 'recommend'
+    if (sort === 'pricePriority') {
+      sortParam = 'price_low'
+    } else if (sort === 'ratingPriority') {
+      sortParam = 'rating'
+    }
+    let path: string = '/products?size=100&sort=' + sortParam
+    if (category.length > 0) {
+      path = path + '&category=' + encodeURIComponent(category)
+    }
+    if (brands.length > 0) {
+      path = path + '&brand=' + encodeURIComponent(brands)
+    }
+    let response = await this.client.get(path)
+    if (response.statusCode === 200) {
+      let data: ProductListJson = JSON.parse(response.data)
+      let products: Product[] = []
+      let i: number = 0
+      while (i < data.items.length) {
+        products.push(jsonToProduct(data.items[i]))
+        i = i + 1
+      }
+      this.productCache = products
+    }
+  }
+
   getProducts(): Product[] {
     return this.productCache
   }

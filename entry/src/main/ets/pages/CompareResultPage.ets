@@ -45,8 +45,12 @@ struct CompareResultPage {
     }
   }
 
-  loadData(): void {
+  async loadData(): Promise<void> {
     this.isLoading = true
+
+    await DataProvider.getProductRepository().loadFilteredProducts(
+      this.categoryName, this.selectedBrands, this.sortType
+    )
 
     let allProducts: Product[] = DataProvider.getProductRepository().getProducts()
     let filtered: Product[] = []
@@ -54,35 +58,21 @@ struct CompareResultPage {
 
     while (i < allProducts.length) {
       let product: Product = allProducts[i]
-      let matches: boolean = true
 
       if (
-        this.categoryName.length > 0 &&
-        product.category !== this.categoryName
-      ) {
-        matches = false
-      }
-
-      if (
-        matches &&
-        this.selectedBrands.length > 0 &&
-        !this.matchesBrand(product.brand)
-      ) {
-        matches = false
-      }
-
-      if (
-        matches &&
         this.selectedPriceLabel.length > 0 &&
         !this.matchesPriceRange(product.lowestPrice)
       ) {
-        matches = false
+        i = i + 1
+        continue
       }
 
-      if (matches) {
-        filtered.push(product)
+      if (this.selectedOtherLabels.length > 0) {
+        i = i + 1
+        continue
       }
 
+      filtered.push(product)
       i = i + 1
     }
 
