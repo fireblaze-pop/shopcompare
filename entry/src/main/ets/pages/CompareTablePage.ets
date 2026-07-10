@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { NavRouter } from '../utils/NavRouter'
 import { Product } from '../models/DataModels'
 import { DataProvider } from '../data/DataProvider'
 import { ProductRepository } from '../data/repository/ProductRepository'
@@ -84,7 +84,7 @@ struct CompareTablePage {
       .justifyContent(FlexAlign.Center)
       .alignItems(HorizontalAlign.Center)
       .onClick(() => {
-        router.back()
+        NavRouter.back()
       })
 
       Column({ space: 2 }) {
@@ -240,7 +240,7 @@ struct CompareTablePage {
         .height(42)
         .padding({ left: 26, right: 26 })
         .onClick(() => {
-          router.back()
+          NavRouter.back()
         })
     }
     .width('100%')

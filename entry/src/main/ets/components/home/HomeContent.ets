@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { NavRouter } from '../../utils/NavRouter'
 import { Category } from '../../models/DataModels'
 import { DataProvider } from '../../data/DataProvider'
 import { NavParams } from '../../utils/PreferenceManager'
@@ -22,7 +22,7 @@ export struct HomeContent {
 
         SearchBar({
           onSearchClick: (): void => {
-            router.pushUrl({ url: 'pages/SearchPage' })
+            NavRouter.push('SearchPage')
           }
         })
           .margin({ bottom: 22 })
@@ -41,9 +41,7 @@ export struct HomeContent {
               NavParams.categoryId = category.id
               NavParams.categoryName = category.name
 
-              router.pushUrl({
-                url: 'pages/CategoryFilterPage'
-              })
+              NavRouter.push('CategoryFilterPage')
             }
           })
         }

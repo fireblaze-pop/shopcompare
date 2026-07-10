@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { NavRouter } from '../utils/NavRouter'
 import { promptAction } from '@kit.ArkUI'
 import { PreferenceManager } from '../utils/PreferenceManager'
 import { HttpClient } from '../utils/HttpClient'
@@ -290,20 +290,14 @@ struct LoginPage {
       PreferenceManager.isFirstLaunch()
 
     if (firstLaunch) {
-      router.pushUrl({
-        url: 'pages/QuestionnairePage'
-      })
+      NavRouter.push('QuestionnairePage')
     } else {
-      router.replaceUrl({
-        url: 'pages/HomePage'
-      })
+      NavRouter.replace('HomePage')
     }
   }
 
   goRegister(): void {
-    router.pushUrl({
-      url: 'pages/RegisterPage'
-    })
+    NavRouter.push('RegisterPage')
   }
 
   build() {
@@ -643,9 +637,7 @@ struct LoginPage {
             .fontColor('#9A9DA4')
             .textAlign(TextAlign.Center)
             .onClick(() => {
-              router.pushUrl({
-                url: 'pages/PrivacyPage'
-              })
+              NavRouter.push('PrivacyPage')
             })
             .margin({
               top: 30,

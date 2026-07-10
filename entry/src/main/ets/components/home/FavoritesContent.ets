@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { NavRouter } from '../../utils/NavRouter'
 import { Product } from '../../models/DataModels'
 import { DataProvider } from '../../data/DataProvider'
 import { NavParams, PreferenceManager } from '../../utils/PreferenceManager'
@@ -137,9 +137,7 @@ export struct FavoritesContent {
             })
             .borderRadius(13)
             .onClick(() => {
-              router.pushUrl({
-                url: 'pages/SearchPage'
-              })
+              NavRouter.push('SearchPage')
             })
         }
         .width('100%')
@@ -200,11 +198,8 @@ export struct FavoritesContent {
   private navigateToDetail(product: Product): void {
     NavParams.productId = product.id
 
-    router.pushUrl({
-      url: 'pages/ProductDetailPage',
-      params: {
-        productId: product.id
-      }
+    NavRouter.push('ProductDetailPage', {
+      productId: product.id
     })
   }
 

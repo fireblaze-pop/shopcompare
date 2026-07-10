@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { NavRouter } from '../utils/NavRouter'
 import { RecommendationItem } from '../models/RecommendationModels'
 import { RecommendationCard } from './RecommendationCard'
 import { NavParams } from '../utils/PreferenceManager'
@@ -11,10 +11,7 @@ export struct RecommendationSection {
 
   private onItemClick(productId: string): void {
     NavParams.productId = productId
-    router.pushUrl({
-      url: 'pages/ProductDetailPage',
-      params: { productId: productId }
-    })
+    NavRouter.push('ProductDetailPage', { productId: productId })
   }
 
   build() {

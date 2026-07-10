@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI';
+import { NavRouter } from '../utils/NavRouter';
 import { promptAction } from '@kit.ArkUI';
 import { Product, PlatformListing, PricePoint, ReviewTag } from '../models/DataModels';
 import { PreferenceManager } from '../utils/PreferenceManager';
@@ -1019,7 +1019,7 @@ struct ProductDetailPage {
           title: '相似商品推荐',
           items: this.similarProducts,
           onSeeMore: (): void => {
-            router.back();
+            NavRouter.back();
           }
         })
       }
@@ -1072,7 +1072,7 @@ struct ProductDetailPage {
       .justifyContent(FlexAlign.Center)
       .alignItems(HorizontalAlign.Center)
       .onClick(() => {
-        router.back();
+        NavRouter.back();
       })
 
       Text(title)
@@ -1192,7 +1192,7 @@ struct ProductDetailPage {
               })
               .margin({ top: 4 })
               .onClick(() => {
-                router.back();
+                NavRouter.back();
               })
           }
           .width('100%')

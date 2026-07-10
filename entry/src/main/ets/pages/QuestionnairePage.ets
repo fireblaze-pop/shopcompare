@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { NavRouter } from '../utils/NavRouter'
 import { PreferenceManager } from '../utils/PreferenceManager'
 import { UserProfile, Category, Product } from '../models/DataModels'
 import { BehaviorManager } from '../utils/BehaviorManager'
@@ -151,13 +151,13 @@ struct QuestionnairePage {
         this.currentStep = this.currentStep - 1
       })
     } else if (!this.isFirstLaunchFlow) {
-      router.back()
+      NavRouter.back()
     }
   }
 
   handleSkip(): void {
     if (!this.isFirstLaunchFlow) {
-      router.back()
+      NavRouter.back()
       return
     }
 
@@ -172,7 +172,7 @@ struct QuestionnairePage {
     PreferenceManager.saveUserProfile(profile)
     PreferenceManager.setFirstLaunchDone()
 
-    router.replaceUrl({ url: 'pages/HomePage' })
+    NavRouter.replace('HomePage')
   }
 
   async handleComplete(): Promise<void> {
@@ -219,15 +219,15 @@ struct QuestionnairePage {
       RecommendationEngine.getInstance().refresh()
 
       if (this.isFirstLaunchFlow) {
-        router.replaceUrl({ url: 'pages/HomePage' })
+        NavRouter.replace('HomePage')
       } else {
-        router.back()
+        NavRouter.back()
       }
     } catch (e) {
       if (this.isFirstLaunchFlow) {
-        router.replaceUrl({ url: 'pages/HomePage' })
+        NavRouter.replace('HomePage')
       } else {
-        router.back()
+        NavRouter.back()
       }
     }
   }

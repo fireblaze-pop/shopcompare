@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { NavRouter } from '../utils/NavRouter'
 import { Product } from '../models/DataModels'
 import { UserAction, ACTION_VIEW, ACTION_CLICK, ACTION_FAVORITE, ACTION_RATE, ACTION_SEARCH } from '../models/RecommendationModels'
 import { DataProvider } from '../data/DataProvider'
@@ -98,10 +98,7 @@ struct BrowseHistoryPage {
 
   private navigateToDetail(product: Product): void {
     NavParams.productId = product.id
-    router.pushUrl({
-      url: 'pages/ProductDetailPage',
-      params: { productId: product.id }
-    })
+    NavRouter.push('ProductDetailPage', { productId: product.id })
   }
 
   @Builder
@@ -181,7 +178,7 @@ struct BrowseHistoryPage {
           .fontColor('#1C1C1E')
           .padding({ right: 12 })
           .onClick(() => {
-            router.back()
+            NavRouter.back()
           })
         Text('浏览历史')
           .fontSize(20)
@@ -216,7 +213,7 @@ struct BrowseHistoryPage {
             .padding({ left: 32, right: 32 })
             .margin({ top: 12 })
             .onClick(() => {
-              router.back()
+              NavRouter.back()
             })
         }
         .width('100%')

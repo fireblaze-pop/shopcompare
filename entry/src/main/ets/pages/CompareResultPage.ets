@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { NavRouter } from '../utils/NavRouter'
 import { Product } from '../models/DataModels'
 import { DataProvider } from '../data/DataProvider'
 import { NavParams } from '../utils/PreferenceManager'
@@ -276,13 +276,11 @@ struct CompareResultPage {
   navigateToDetail(product: Product): void {
     NavParams.productId = product.id
 
-    router.pushUrl({
-      url: 'pages/ProductDetailPage'
-    })
+    NavRouter.push('ProductDetailPage')
   }
 
   navigateBackToFilter(): void {
-    router.back()
+          NavRouter.back()
   }
 
   @Builder
@@ -299,7 +297,7 @@ struct CompareResultPage {
       .justifyContent(FlexAlign.Center)
       .alignItems(HorizontalAlign.Center)
       .onClick(() => {
-        router.back()
+        NavRouter.back()
       })
 
       Column({ space: 2 }) {
@@ -608,7 +606,7 @@ struct CompareResultPage {
         })
         .borderRadius(13)
         .onClick(() => {
-          router.back()
+    NavRouter.back()
         })
     }
     .width('100%')
@@ -746,9 +744,7 @@ struct CompareResultPage {
     NavParams.compareProductIds =
       this.buildProductIdList(this.selectedCompareIds)
 
-    router.pushUrl({
-      url: 'pages/CompareTablePage'
-    })
+    NavRouter.push('CompareTablePage')
   }
 
   @Builder

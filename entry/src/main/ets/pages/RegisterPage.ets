@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { NavRouter } from '../utils/NavRouter'
 import { promptAction } from '@kit.ArkUI'
 import { HttpClient } from '../utils/HttpClient'
 import { DataProvider } from '../data/DataProvider'
@@ -229,7 +229,7 @@ struct RegisterPage {
         message: '注册成功，请使用新账号登录'
       })
 
-      router.back()
+      NavRouter.back()
       return
     }
 
@@ -249,7 +249,7 @@ struct RegisterPage {
           .height(22)
           .objectFit(ImageFit.Contain)
           .onClick(() => {
-            router.back()
+            NavRouter.back()
           })
 
         Text('注册账号')
@@ -537,7 +537,7 @@ struct RegisterPage {
               .fontWeight(FontWeight.Medium)
               .fontColor('#5267E8')
               .onClick(() => {
-                router.back()
+                NavRouter.back()
               })
           }
           .width('100%')
@@ -557,9 +557,7 @@ struct RegisterPage {
               bottom: 8
             })
             .onClick(() => {
-              router.pushUrl({
-                url: 'pages/PrivacyPage'
-              })
+              NavRouter.push('PrivacyPage')
             })
             .margin({
               top: 26,

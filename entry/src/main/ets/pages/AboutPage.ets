@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { NavRouter } from '../utils/NavRouter'
 
 @Entry
 @Component
@@ -90,7 +90,7 @@ struct AboutPage {
           .height(22)
           .objectFit(ImageFit.Contain)
           .onClick(() => {
-            router.back()
+            NavRouter.back()
           })
 
         Text('关于我们')

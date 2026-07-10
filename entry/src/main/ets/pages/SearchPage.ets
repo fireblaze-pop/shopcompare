@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { NavRouter } from '../utils/NavRouter'
 import { Product } from '../models/DataModels'
 import { MockData } from '../data/MockData'
 import { NavParams, PreferenceManager } from '../utils/PreferenceManager'
@@ -136,9 +136,7 @@ struct SearchPage {
   navigateToDetail(product: Product): void {
     NavParams.productId = product.id
 
-    router.pushUrl({
-      url: 'pages/ProductDetailPage'
-    })
+    NavRouter.push('ProductDetailPage')
   }
 
   build() {
@@ -146,7 +144,7 @@ struct SearchPage {
       SearchHeader({
         searchText: this.searchText,
         onBack: (): void => {
-          router.back()
+          NavRouter.back()
         },
         onTextChange: (value: string): void => {
           this.searchText = value

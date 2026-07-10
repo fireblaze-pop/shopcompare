@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { NavRouter } from '../utils/NavRouter'
 
 @Entry
 @Component
@@ -11,7 +11,7 @@ struct PrivacyPage {
           .fontColor('#1C1C1E')
           .padding({ right: 12 })
           .onClick(() => {
-            router.back()
+            NavRouter.back()
           })
         Text('隐私政策')
           .fontSize(20)

@@ -1,4 +1,5 @@
-import { router, promptAction } from '@kit.ArkUI'
+import { NavRouter } from '../../utils/NavRouter'
+import { promptAction } from '@kit.ArkUI'
 import { common, ConfigurationConstant } from '@kit.AbilityKit'
 import { PreferenceManager } from '../../utils/PreferenceManager'
 import { BehaviorManager } from '../../utils/BehaviorManager'
@@ -117,9 +118,7 @@ export struct ProfileContent {
               iconIndex: 0,
               label: '个性化偏好',
               onItemAction: (): void => {
-                router.pushUrl({
-                  url: 'pages/QuestionnairePage'
-                })
+                NavRouter.push('QuestionnairePage')
               }
             })
 
@@ -139,9 +138,7 @@ export struct ProfileContent {
               iconIndex: 2,
               label: '浏览历史',
               onItemAction: (): void => {
-                router.pushUrl({
-                  url: 'pages/BrowseHistoryPage'
-                })
+                NavRouter.push('BrowseHistoryPage')
               }
             })
           }
@@ -189,9 +186,7 @@ export struct ProfileContent {
               label: '关于我们',
               showVersion: true,
               onItemAction: (): void => {
-                router.pushUrl({
-                  url: 'pages/AboutPage'
-                })
+                NavRouter.push('AboutPage')
               }
             })
           }
@@ -418,6 +413,6 @@ export struct ProfileContent {
 
     BehaviorManager.getInstance().clearActions()
 
-    router.replaceUrl({ url: 'pages/LoginPage' })
+    NavRouter.replace('LoginPage')
   }
 }

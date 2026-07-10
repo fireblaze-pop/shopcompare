@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { NavRouter } from '../utils/NavRouter'
 import {
   FilterGroup,
   FilterOption
@@ -312,9 +312,7 @@ struct CategoryFilterPage {
     NavParams.selectedOtherLabels = selectedOtherLabels
     NavParams.compareProductIds = ''
 
-    router.pushUrl({
-      url: 'pages/CompareResultPage'
-    })
+    NavRouter.push('CompareResultPage')
   }
 
   appendCommaValue(
@@ -589,7 +587,7 @@ struct CategoryFilterPage {
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
         .onClick(() => {
-          router.back()
+          NavRouter.back()
         })
 
         Text(this.categoryName)

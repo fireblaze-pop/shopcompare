@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI';
+import { NavRouter } from '../utils/NavRouter'
 import { DataProvider } from '../data/DataProvider'
 
 @Entry
@@ -25,7 +25,7 @@ struct SplashPage {
       remaining = 0;
     }
     setTimeout(() => {
-      router.replaceUrl({ url: 'pages/LoginPage' });
+      NavRouter.replace('LoginPage');
     }, remaining);
   }
 
@@ -67,7 +67,7 @@ struct SplashPage {
           .borderRadius(20)
           .padding({ left: 24, right: 24, top: 10, bottom: 10 })
           .onClick(() => {
-            router.replaceUrl({ url: 'pages/LoginPage' })
+            NavRouter.replace('LoginPage')
           })
       }
       .width('100%')
