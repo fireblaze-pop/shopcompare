@@ -3,7 +3,7 @@ import { DataProvider } from '../data/DataProvider'
 
 @Entry
 @Component
-struct SplashPage {
+export struct SplashPage {
   @State opacityValue: number = 0;
 
   aboutToAppear(): void {

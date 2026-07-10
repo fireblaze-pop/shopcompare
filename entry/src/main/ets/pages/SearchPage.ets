@@ -26,7 +26,7 @@ interface SearchResult {
 
 @Entry
 @Component
-struct SearchPage {
+export struct SearchPage {
   @State searchText: string = ''
   @State searchResults: Product[] = []
   @State searchHistory: string[] = []

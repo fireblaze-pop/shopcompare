@@ -39,7 +39,7 @@ interface ProductCountResponse {
 
 @Entry
 @Component
-struct CategoryFilterPage {
+export struct CategoryFilterPage {
   @State categoryName: string = ''
   @State categoryId: string = ''
   @State filterGroups: FilterGroup[] = []

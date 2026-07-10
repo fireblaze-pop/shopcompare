@@ -2,7 +2,7 @@ import { NavRouter } from '../utils/NavRouter'
 
 @Entry
 @Component
-struct AboutPage {
+export struct AboutPage {
   @Builder FeatureIcon(index: number) {
     if (index === 0) {
       Image($r('app.media.icon_search'))

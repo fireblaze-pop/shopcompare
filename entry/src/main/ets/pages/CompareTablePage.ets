@@ -7,7 +7,7 @@ import { ProductCompareTable } from '../components/ProductCompareTable'
 
 @Entry
 @Component
-struct CompareTablePage {
+export struct CompareTablePage {
   @State products: Product[] = []
   @State isLoading: boolean = true
 

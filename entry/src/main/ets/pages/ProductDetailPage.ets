@@ -18,7 +18,7 @@ interface DetailPageParams {
 
 @Entry
 @Component
-struct ProductDetailPage {
+export struct ProductDetailPage {
   @State product: Product | undefined = undefined;
   @State isLoading: boolean = true;
   @State currentImageIndex: number = 0;

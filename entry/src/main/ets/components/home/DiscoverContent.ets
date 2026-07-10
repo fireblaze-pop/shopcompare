@@ -4,6 +4,10 @@ import { DataProvider } from '../../data/DataProvider'
 import { NavParams } from '../../utils/PreferenceManager'
 import { DiscoverProductCard } from './DiscoverProductCard'
 
+interface DetailParams {
+  productId: string
+}
+
 @Component
 export struct DiscoverContent {
   @State activeSortIndex: number = 0
@@ -191,9 +195,7 @@ export struct DiscoverContent {
 
   private navigateToDetail(product: Product): void {
     NavParams.productId = product.id
-
-    NavRouter.push('ProductDetailPage', {
-      productId: product.id
-    })
+    let params: DetailParams = { productId: product.id }
+    NavRouter.push('ProductDetailPage', params)
   }
 }

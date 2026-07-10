@@ -2,7 +2,7 @@ import { NavRouter } from '../utils/NavRouter'
 
 @Entry
 @Component
-struct PrivacyPage {
+export struct PrivacyPage {
   build() {
     Column() {
       Row() {

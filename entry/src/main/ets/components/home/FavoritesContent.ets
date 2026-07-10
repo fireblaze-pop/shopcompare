@@ -4,6 +4,10 @@ import { DataProvider } from '../../data/DataProvider'
 import { NavParams, PreferenceManager } from '../../utils/PreferenceManager'
 import { FavoriteProductCard } from './FavoriteProductCard'
 
+interface DetailParams {
+  productId: string
+}
+
 @Component
 export struct FavoritesContent {
   @Prop @Watch('onVersionChange') favoritesVersion: number = 0
@@ -197,10 +201,8 @@ export struct FavoritesContent {
 
   private navigateToDetail(product: Product): void {
     NavParams.productId = product.id
-
-    NavRouter.push('ProductDetailPage', {
-      productId: product.id
-    })
+    let params: DetailParams = { productId: product.id }
+    NavRouter.push('ProductDetailPage', params)
   }
 
   private removeFavorite(productId: string): void {

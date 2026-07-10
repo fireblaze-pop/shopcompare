@@ -23,7 +23,7 @@ interface ApiErrorResp {
 
 @Entry
 @Component
-struct LoginPage {
+export struct LoginPage {
   @State phone: string = ''
   @State password: string = ''
   @State code: string = ''

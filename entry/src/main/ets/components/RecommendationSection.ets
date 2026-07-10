@@ -3,6 +3,10 @@ import { RecommendationItem } from '../models/RecommendationModels'
 import { RecommendationCard } from './RecommendationCard'
 import { NavParams } from '../utils/PreferenceManager'
 
+interface DetailParams {
+  productId: string
+}
+
 @Component
 export struct RecommendationSection {
   @Prop title: string = '为你推荐'
@@ -11,7 +15,8 @@ export struct RecommendationSection {
 
   private onItemClick(productId: string): void {
     NavParams.productId = productId
-    NavRouter.push('ProductDetailPage', { productId: productId })
+    let params: DetailParams = { productId: productId }
+    NavRouter.push('ProductDetailPage', params)
   }
 
   build() {

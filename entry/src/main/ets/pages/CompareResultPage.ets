@@ -7,7 +7,7 @@ import { ProductFilterParams } from '../data/repository/ProductRepository'
 
 @Entry
 @Component
-struct CompareResultPage {
+export struct CompareResultPage {
   @State products: Product[] = []
   @State allFilteredProducts: Product[] = []
   @State sortType: string = 'recommend'

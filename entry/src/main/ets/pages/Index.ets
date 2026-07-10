@@ -1,4 +1,17 @@
 import { NavRouter } from '../utils/NavRouter'
+import { SplashPage } from './SplashPage'
+import { LoginPage } from './LoginPage'
+import { RegisterPage } from './RegisterPage'
+import { QuestionnairePage } from './QuestionnairePage'
+import { HomePage } from './HomePage'
+import { CategoryFilterPage } from './CategoryFilterPage'
+import { CompareResultPage } from './CompareResultPage'
+import { CompareTablePage } from './CompareTablePage'
+import { ProductDetailPage } from './ProductDetailPage'
+import { SearchPage } from './SearchPage'
+import { BrowseHistoryPage } from './BrowseHistoryPage'
+import { AboutPage } from './AboutPage'
+import { PrivacyPage } from './PrivacyPage'
 
 @Entry
 @Component

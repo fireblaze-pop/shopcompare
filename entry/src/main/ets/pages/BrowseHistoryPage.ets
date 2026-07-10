@@ -6,6 +6,10 @@ import { BehaviorManager } from '../utils/BehaviorManager'
 import { ProductRepository } from '../data/repository/ProductRepository'
 import { NavParams } from '../utils/PreferenceManager'
 
+interface DetailParams {
+  productId: string
+}
+
 interface HistoryEntry {
   product: Product
   timestamp: number
@@ -14,7 +18,7 @@ interface HistoryEntry {
 
 @Entry
 @Component
-struct BrowseHistoryPage {
+export struct BrowseHistoryPage {
   @State historyEntries: HistoryEntry[] = []
 
   aboutToAppear(): void {
@@ -98,7 +102,8 @@ struct BrowseHistoryPage {
 
   private navigateToDetail(product: Product): void {
     NavParams.productId = product.id
-    NavRouter.push('ProductDetailPage', { productId: product.id })
+    let params: DetailParams = { productId: product.id }
+    NavRouter.push('ProductDetailPage', params)
   }
 
   @Builder

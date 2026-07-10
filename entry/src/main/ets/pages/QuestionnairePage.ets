@@ -41,7 +41,7 @@ let BUDGET_LIST: BudgetCard[] = [
 
 @Entry
 @Component
-struct QuestionnairePage {
+export struct QuestionnairePage {
   @State currentStep: number = 0
   @State selectedPreferences: string[] = []
   @State selectedBudget: string = ''
